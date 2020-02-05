@@ -1,0 +1,115 @@
+{
+  "num_inputs": 18,
+  "num_mul": 9,
+  "num_outputs": 3,
+  "width": 32,
+  "outputs": [
+    60,
+    50,
+    40
+  ],
+  "modules": [
+    {
+      "type": "mul",
+      "in0": 0,
+      "in1": 1,
+      "out": 20
+    },
+    {
+      "type": "mul",
+      "in0": 2,
+      "in1": 3,
+      "out": 21
+    },
+    {
+      "type": "mul",
+      "in0": 4,
+      "in1": 5,
+      "out": 22
+    },
+    {
+      "type": "mul",
+      "in0": 6,
+      "in1": 7,
+      "out": 23
+    },
+    {
+      "type": "mul",
+      "in0": 8,
+      "in1": 9,
+      "out": 24
+    },
+    {
+      "type": "mul",
+      "in0": 10,
+      "in1": 11,
+      "out": 25
+    },
+    {
+      "type": "mul",
+      "in0": 12,
+      "in1": 13,
+      "out": 26
+    },
+    {
+      "type": "mul",
+      "in0": 14,
+      "in1": 15,
+      "out": 27
+    },
+    {
+      "type": "mul",
+      "in0": 16,
+      "in1": 17,
+      "out": 28
+    },
+    {
+      "type": "alu",
+      "in0": 20,
+      "in1": 21,
+      "out": 30
+    },
+    {
+      "type": "alu",
+      "in0": 22,
+      "in1": 23,
+      "out": 31
+    },
+    {
+      "type": "alu",
+      "in0": 24,
+      "in1": 25,
+      "out": 32
+    },
+    {
+      "type": "alu",
+      "in0": 26,
+      "in1": 27,
+      "out": 33
+    },
+    {
+      "type": "alu",
+      "in0": 30,
+      "in1": 31,
+      "out": 40
+    },
+    {
+      "type": "alu",
+      "in0": 32,
+      "in1": 33,
+      "out": 41
+    },
+    {
+      "type": "alu",
+      "in0": 40,
+      "in1": 41,
+      "out": 50
+    },
+    {
+      "type": "alu",
+      "in0": 50,
+      "in1": 28,
+      "out": 60
+    }
+  ]
+}

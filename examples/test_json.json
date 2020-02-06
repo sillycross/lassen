@@ -1,8 +1,8 @@
 {
   "num_inputs": 2,
-  "num_outputs": 2,
+  "num_outputs": 3,
   "outputs": [
-    20, 21
+    20, 21, 30
   ],
   "width": 16,
   "modules": [
@@ -17,6 +17,12 @@
       "in0": [0, 1],
       "in1": [0, 1],
       "out": 21
+    },
+    {
+      "type": "alu",
+      "in0": [20, 21],
+      "in1": [20, 21],
+      "out": 30
     }
   ]
 }

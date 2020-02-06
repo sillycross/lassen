@@ -32,6 +32,7 @@ def ALU_t_fc(family):
         GTE_Max = 4
         LTE_Min = 5
         Sel = 8
+        # Remeber to remove mul operation from ALU
         Mult0 = 0xb
         Mult1 = 0xc
         Mult2 = 0xd

@@ -1,111 +1,180 @@
 from peak import Peak, family_closure, name_outputs, assemble
 from functools import lru_cache
 import magma as m
-
+import hwtypes
+import ast_tools
+from ast_tools.passes import begin_rewrite, end_rewrite, loop_unroll, if_inline
+from ast_tools.macros import inline
+import inspect
 from .common import *
 from .mode import gen_register_mode
 from .lut import LUT_fc
 from .alu import ALU_fc
 from .cond import Cond_fc
-from .isa import Inst_fc
+from .isa import inst_arch_closure
+from .arch import *
+from .mul import MUL_fc
 
-@family_closure
-def PE_fc(family):
-    BitVector = family.BitVector
+def arch_closure(arch):
+    @family_closure
+    def PE_fc(family):
+        BitVector = family.BitVector
 
-    #Hack
-    def BV1(bit):
-        return bit.ite(family.BitVector[1](1), family.BitVector[1](0))
-    Data = family.BitVector[DATAWIDTH]
-    UData = family.Unsigned[DATAWIDTH]
-    Data8 = family.BitVector[8]
-    Data32 = family.BitVector[32]
-    Bit = family.Bit
-    DataReg = gen_register_mode(Data, 0)(family)
-    BitReg = gen_register_mode(Bit, 0)(family)
-    ALU = ALU_fc(family)
-    Cond = Cond_fc(family)
-    LUT = LUT_fc(family)
-    Inst = Inst_fc(family)
+        #Hack
+        def BV1(bit):
+            return bit.ite(family.BitVector[1](1), family.BitVector[1](0))
+        Data = family.BitVector[DATAWIDTH]
+        UData = family.Unsigned[DATAWIDTH]
+        Data8 = family.BitVector[8]
+        Data32 = family.BitVector[32]
+        Bit = family.Bit
+        DataReg = gen_register_mode(Data, 0)(family)
+        BitReg = gen_register_mode(Bit, 0)(family)
+        ALU = ALU_fc(family)
+        Cond = Cond_fc(family)
+        LUT = LUT_fc(family)
+        MUL = MUL_fc(family)
+        Inst_fc = inst_arch_closure(arch)
+        Inst = Inst_fc(family)
 
-    @assemble(family, locals(), globals())
-    class PE(Peak):
-        def __init__(self):
-
-            # Data registers
-            self.rega: DataReg = DataReg()
-            self.regb: DataReg = DataReg()
-
-            # Bit Registers
-            self.regd: BitReg = BitReg()
-            self.rege: BitReg = BitReg()
-            self.regf: BitReg = BitReg()
-
-            #ALU
-            self.alu: ALU = ALU()
-
-            #Condition code
-            self.cond: Cond = Cond()
-
-            #Lut
-            self.lut: LUT = LUT()
-
-        @name_outputs(alu_res=Data, res_p=Bit, read_config_data=Data32)
-        def __call__(self, inst: Inst, \
-            data0: Data, data1: Data = Data(0), \
-            bit0: Bit = Bit(0), bit1: Bit = Bit(0), bit2: Bit = Bit(0), \
-            clk_en: Global(Bit) = Bit(1), \
-            config_addr : Data8 = Data8(0), \
-            config_data : Data32 = Data32(0), \
-            config_en : Bit = Bit(0) \
-        ) -> (Data, Bit, Data32):
-            # Simulate one clock cycle
+        if family.Bit is m.Bit:
+            DataInputList = m.Tuple[(Data for _ in range(arch.num_inputs))]
+            DataOutputList = m.Tuple[(Data for _ in range(arch.num_outputs))]
+        else:
+            DataInputList = hwtypes.Tuple[(Data for _ in range(arch.num_inputs))]
+            DataOutputList = hwtypes.Tuple[(Data for _ in range(arch.num_outputs))]
 
 
-            data01_addr = (config_addr[:3] == BitVector[3](DATA01_ADDR))
-            bit012_addr = (config_addr[:3] == BitVector[3](BIT012_ADDR))
 
-            #ra
-            ra_we = (data01_addr & config_en)
-            ra_config_wdata = config_data[DATA0_START:DATA0_START+DATA0_WIDTH]
 
-            #rb
-            rb_we = ra_we
-            rb_config_wdata = config_data[DATA1_START:DATA1_START+DATA1_WIDTH]
+        @assemble(family, locals(), globals())
+        class PE(Peak):
 
-            #rd
-            rd_we = (bit012_addr & config_en)
-            rd_config_wdata = config_data[BIT0_START]
+            @end_rewrite()
+            @loop_unroll()
+            @begin_rewrite()
+            def __init__(self):
 
-            #re
-            re_we = rd_we
-            re_config_wdata = config_data[BIT1_START]
+                # Data registers
+                self.rega: DataReg = DataReg()
+                self.regb: DataReg = DataReg()
 
-            #rf
-            rf_we = rd_we
-            rf_config_wdata = config_data[BIT2_START]
-            ra, ra_rdata = self.rega(inst.rega, inst.data0, data0, clk_en, ra_we, ra_config_wdata)
-            rb, rb_rdata = self.regb(inst.regb, inst.data1, data1, clk_en, rb_we, rb_config_wdata)
+                # Bit Registers
+                self.regd: BitReg = BitReg()
+                self.rege: BitReg = BitReg()
+                self.regf: BitReg = BitReg()
 
-            rd, rd_rdata = self.regd(inst.regd, inst.bit0, bit0, clk_en, rd_we, rd_config_wdata)
-            re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
-            rf, rf_rdata = self.regf(inst.regf, inst.bit2, bit2, clk_en, rf_we, rf_config_wdata)
+                #ALU
+                self.alu: ALU = ALU()
+                self.mul: MUL = MUL()
 
-            #Calculate read_config_data
-            read_config_data = bit012_addr.ite(
-                BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
-                ra_rdata.concat(rb_rdata)
-            )
+                # for i in ast_tools.macros.unroll(range(arch.num_alu)):
+                #     setattr(self, f"alu_{i}", ALU())
+                # for j in ast_tools.macros.unroll(range(arch.num_mul)):
+                #     setattr(self, f"mul_{j}", MUL())
+                
 
-            # calculate alu results
-            alu_res, alu_res_p, Z, N, C, V = self.alu(inst.alu, inst.signed, ra, rb, rd)
+                #Condition code
+                self.cond: Cond = Cond()
 
-            # calculate lut results
-            lut_res = self.lut(inst.lut, rd, re, rf)
+                #Lut
+                self.lut: LUT = LUT()
 
-            # calculate 1-bit result
-            res_p = self.cond(inst.cond, alu_res_p, lut_res, Z, N, C, V)
+            @end_rewrite()
+            @if_inline()
+            @loop_unroll()
+            @loop_unroll()
+            @begin_rewrite()
+            @name_outputs(alu_res=DataOutputList, res_p=Bit, read_config_data=Data32)
+            def __call__(self, inst: Inst, \
+                inputs : DataInputList, \
+                bit0: Bit = Bit(0), bit1: Bit = Bit(0), bit2: Bit = Bit(0), \
+                clk_en: Global(Bit) = Bit(1), \
+                config_addr : Data8 = Data8(0), \
+                config_data : Data32 = Data32(0), \
+                config_en : Bit = Bit(0) \
+            ) -> (DataOutputList, Bit, Data32):
+                # Simulate one clock cycle
 
-            # return 16-bit result, 1-bit result
-            return alu_res, res_p, read_config_data
-    return PE
+
+                data01_addr = (config_addr[:3] == BitVector[3](DATA01_ADDR))
+                bit012_addr = (config_addr[:3] == BitVector[3](BIT012_ADDR))
+
+                #ra
+                ra_we = (data01_addr & config_en)
+                ra_config_wdata = config_data[DATA0_START:DATA0_START+DATA0_WIDTH]
+
+                #rb
+                rb_we = ra_we
+                rb_config_wdata = config_data[DATA1_START:DATA1_START+DATA1_WIDTH]
+
+                #rd
+                rd_we = (bit012_addr & config_en)
+                rd_config_wdata = config_data[BIT0_START]
+
+                #re
+                re_we = rd_we
+                re_config_wdata = config_data[BIT1_START]
+
+                #rf
+                rf_we = rd_we
+                rf_config_wdata = config_data[BIT2_START]
+                ra, ra_rdata = self.rega(inst.rega, inst.data0, inputs[0], clk_en, ra_we, ra_config_wdata)
+                rb, rb_rdata = self.regb(inst.regb, inst.data1, inputs[1], clk_en, rb_we, rb_config_wdata)
+
+                rd, rd_rdata = self.regd(inst.regd, inst.bit0, bit0, clk_en, rd_we, rd_config_wdata)
+                re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
+                rf, rf_rdata = self.regf(inst.regf, inst.bit2, bit2, clk_en, rf_we, rf_config_wdata)
+
+                #Calculate read_config_data
+                read_config_data = bit012_addr.ite(
+                    BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
+                    ra_rdata.concat(rb_rdata)
+                )
+
+                signals = {}
+
+                for i in ast_tools.macros.unroll(range(arch.num_inputs)):
+                    signals[i] = inputs[i]
+
+                # mul_idx = 0
+                # alu_idx = 0
+
+                for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
+
+                    in0_mux_select = inst.mux_in0[mod_index]
+                    for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in0))):
+                        if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in0))](mux_inputs):
+                            in0 = signals[arch.modules[mod_index].in0[mux_inputs]]
+                        
+                    in1_mux_select = inst.mux_in1[mod_index]
+                    for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in1))):
+                        if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in1))](mux_inputs):
+                            in1 = signals[arch.modules[mod_index].in1[mux_inputs]]
+
+                    if inline(arch.modules[mod_index].type_ == "mul"):
+                        signals[arch.modules[mod_index].out] = self.mul(inst.signed, in0, in1)
+                        # mul_idx += 1
+                        
+                    elif inline(arch.modules[mod_index].type_ == "alu"):
+                        signals[arch.modules[mod_index].out], alu_res_p, Z, N, C, V = self.alu(inst.alu[0], inst.signed, in0, in1, rd)
+                        # alu_idx += 1
+                            
+                # calculate lut results
+                lut_res = self.lut(inst.lut, rd, re, rf)
+
+                # calculate 1-bit result
+                res_p = self.cond(inst.cond, alu_res_p, lut_res, Z, N, C, V)
+
+                outputs = []
+                for i in ast_tools.macros.unroll(range(arch.num_outputs)):
+                    outputs.append(signals[arch.outputs[i]])
+
+
+                # return 16-bit result, 1-bit result
+                return DataOutputList(*outputs), res_p, read_config_data
+
+            print(inspect.getsource(__init__)) 
+            # print(inspect.getsource(__call__)) 
+        return PE
+    return PE_fc

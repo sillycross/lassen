@@ -50,9 +50,6 @@ def arch_closure(arch):
         @assemble(family, locals(), globals())
         class PE(Peak):
 
-            @end_rewrite()
-            @loop_unroll()
-            @begin_rewrite()
             def __init__(self):
 
                 # Data registers
@@ -65,8 +62,8 @@ def arch_closure(arch):
                 self.regf: BitReg = BitReg()
 
                 #ALU
-                self.alu: ALU = ALU()
-                self.mul: MUL = MUL()
+                # self.alu: ALU = ALU()
+                # self.mul: MUL = MUL()
 
                 # for i in ast_tools.macros.unroll(range(arch.num_alu)):
                 #     setattr(self, f"alu_{i}", ALU())
@@ -126,6 +123,7 @@ def arch_closure(arch):
                 re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
                 rf, rf_rdata = self.regf(inst.regf, inst.bit2, bit2, clk_en, rf_we, rf_config_wdata)
 
+
                 #Calculate read_config_data
                 read_config_data = bit012_addr.ite(
                     BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
@@ -135,29 +133,38 @@ def arch_closure(arch):
                 signals = {}
 
                 for i in ast_tools.macros.unroll(range(arch.num_inputs)):
-                    signals[i] = inputs[i]
+                    signals[arch.inputs[i]] = inputs[i]
 
                 # mul_idx = 0
                 # alu_idx = 0
-
+                mux_idx_in0 = 0
+                mux_idx_in1 = 0
                 for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
 
-                    in0_mux_select = inst.mux_in0[mod_index]
-                    for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in0))):
-                        if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in0))](mux_inputs):
-                            in0 = signals[arch.modules[mod_index].in0[mux_inputs]]
-                        
-                    in1_mux_select = inst.mux_in1[mod_index]
-                    for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in1))):
-                        if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in1))](mux_inputs):
-                            in1 = signals[arch.modules[mod_index].in1[mux_inputs]]
+                    if inline(len(arch.modules[mod_index].in0) == 1):
+                        in0 = signals[arch.modules[mod_index].in0[0]]  
+                    else:
+                        in0_mux_select = inst.mux_in0[mux_idx_in0]
+                        mux_idx_in0 = mux_idx_in0 + 1
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in0))):
+                            if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in0))](mux_inputs):
+                                in0 = signals[arch.modules[mod_index].in0[mux_inputs]]
+                            
+                    if inline(len(arch.modules[mod_index].in1) == 1):
+                        in1 = signals[arch.modules[mod_index].in1[0]]  
+                    else:
+                        in1_mux_select = inst.mux_in1[mux_idx_in1]
+                        mux_idx_in1 = mux_idx_in1 + 1
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in1))):
+                            if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in1))](mux_inputs):
+                                in1 = signals[arch.modules[mod_index].in1[mux_inputs]]
 
                     if inline(arch.modules[mod_index].type_ == "mul"):
-                        signals[arch.modules[mod_index].out] = self.mul(inst.signed, in0, in1)
+                        signals[arch.modules[mod_index].id] = MUL(inst.signed, in0, in1)
                         # mul_idx += 1
                         
                     elif inline(arch.modules[mod_index].type_ == "alu"):
-                        signals[arch.modules[mod_index].out], alu_res_p, Z, N, C, V = self.alu(inst.alu[0], inst.signed, in0, in1, rd)
+                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[0], inst.signed, in0, in1, rd)
                         # alu_idx += 1
                             
                 # calculate lut results
@@ -174,7 +181,7 @@ def arch_closure(arch):
                 # return 16-bit result, 1-bit result
                 return DataOutputList(*outputs), res_p, read_config_data
 
-            print(inspect.getsource(__init__)) 
+            # print(inspect.getsource(__init__)) 
             # print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

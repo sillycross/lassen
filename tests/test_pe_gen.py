@@ -18,14 +18,12 @@ class HashableDict(dict):
         return hash(tuple(sorted(self.keys())))
 
 # with open('examples/conv_3_3_balanced.json') as json_file:
-
 arch = read_arch(str(sys.argv[1]))
 
 width = arch.width
 num_inputs = arch.num_inputs
 num_outputs = arch.num_outputs
 num_alu = arch.num_alu
-
 Inst_fc = inst_arch_closure(arch)
 Inst = Inst_fc(Bit.get_family())
 ALU_t, Signed_t = ALU_t_fc(Bit.get_family())
@@ -47,7 +45,6 @@ assembler = _assembler.assemble
 disassembler = _assembler.disassemble
 width = _assembler.width
 layout = _assembler.layout
-#PE_magma = PE_fc(magma.get_family(), use_assembler=True)
 PE_magma = PE_fc(magma.get_family())
 instr_magma_type = type(PE_magma.interface.ports[inst_name])
 pe_circuit = wrap_with_disassembler(PE_magma, disassembler, width,
@@ -60,41 +57,89 @@ magma.backend.coreir_.CoreIRContextSingleton().reset_instance()
 magma.compile(f"{test_dir}/WrappedPE", pe_circuit, output="coreir-verilog",
               coreir_libs={"float_DW"})
 
-def test_func_and_rtl():
+cw_dir = "/cad/synopsys/dc_shell/J-2014.09-SP3/dw/sim_ver/"   # noqa
+CAD_ENV = shutil.which("ncsim") and os.path.isdir(cw_dir)
 
 
-    alu_list = [ALU_t.Add for _ in range(num_alu)]
-    mux_list_inst_in0 = []
-    mux_list_inst_in1 = []
-    for i in range(len(arch.modules)):
-        mux_list_inst_in0.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in0))](0))
-        mux_list_inst_in1.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in1))](0))
+def copy_file(src_filename, dst_filename, override=False):
+    if not override and os.path.isfile(dst_filename):
+        return
+    shutil.copy(src_filename, dst_filename)
 
 
-    inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1)
-
-    inputs = [random.randint(0, 2**4) for _ in range(num_inputs)]
-    inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
-
-    
-    signals = {}
-
-    for i in range(num_inputs):
-        signals[i] = inputs[i]
-
-    for mod in range(len(arch.modules)):
-        if (arch.modules[mod].type_ == "mul"):
-            signals[arch.modules[mod].out] = signals[arch.modules[mod].in0[0]] * signals[arch.modules[mod].in1[0]]
-        elif (arch.modules[mod].type_ == "alu"):
-            signals[arch.modules[mod].out] = signals[arch.modules[mod].in0[0]] + signals[arch.modules[mod].in1[0]]
+# Define instruction here
+alu_list = [ALU_t.Add for _ in range(num_alu)]
+mux_list_in0 = [1 for _ in range(arch.num_mux_in0)]
+mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
 
 
-    res_comp = []
-    for i in range(arch.num_outputs):
-        res_comp.append(signals[arch.outputs[i]])
 
-    print("Expected int result: ", res_comp)
+mux_list_inst_in0 = []
+mux_list_inst_in1 = []
 
+mux_0_idx = 0
+mux_1_idx = 0
+for i in range(len(arch.modules)):
+    if len(arch.modules[i].in0) > 1:
+        mux_list_inst_in0.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in0))](mux_list_in0[mux_0_idx]))
+        mux_0_idx += 1
+    if len(arch.modules[i].in1) > 1:   
+        mux_list_inst_in1.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in1))](mux_list_in1[mux_1_idx]))
+        mux_1_idx += 1
+
+
+inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1)
+
+inputs = [random.randint(0, 2**4) for _ in range(num_inputs)]
+inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
+
+
+signals = {}
+
+for i in range(num_inputs):
+    signals[arch.inputs[i]] = inputs[i]
+
+mux_idx_in0 = 0
+mux_idx_in1 = 0
+for mod in range(len(arch.modules)):
+
+    if len(arch.modules[mod].in0) == 1:
+        in0 = signals[arch.modules[mod].in0[0]]  
+    else:
+        in0_mux_select = mux_list_in0[mux_idx_in0]
+        mux_idx_in0 = mux_idx_in0 + 1
+        for mux_inputs in range(len(arch.modules[mod].in0)):
+            if in0_mux_select == mux_inputs:
+                in0 = signals[arch.modules[mod].in0[mux_inputs]]
+
+    if len(arch.modules[mod].in1) == 1:
+        in1 = signals[arch.modules[mod].in1[0]]  
+    else:
+        in1_mux_select = mux_list_in1[mux_idx_in1]
+        mux_idx_in1 = mux_idx_in1 + 1
+        for mux_inputs in range(len(arch.modules[mod].in1)):
+            if in1_mux_select == mux_inputs:
+                in1 = signals[arch.modules[mod].in1[mux_inputs]]
+
+    if (arch.modules[mod].type_ == "mul"):
+        signals[arch.modules[mod].id] = in0 * in1
+    elif (arch.modules[mod].type_ == "alu"):
+        signals[arch.modules[mod].id] = in0 + in1
+
+
+res_comp = []
+for i in range(arch.num_outputs):
+    res_comp.append(signals[arch.outputs[i]])
+
+print("Expected int result: ", res_comp)
+
+def test_func():
+    pe = PE_bv()
+    res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+    print("functional test result: ", [res_pe[i].value for i in range(num_outputs)])
+    assert res_comp == [res_pe[i].value for i in range(num_outputs)] 
+
+def test_rtl():
     tester.clear()
     # Advance timestep past 0 for fp functional model (see rnd logic)
     tester.circuit.ASYNCRESET = 0
@@ -111,15 +156,33 @@ def test_func_and_rtl():
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
     tester.circuit.O0.expect(res_comp)
+    
         
-    import pdb; pdb.set_trace()
-    skip_verilator = os.path.isfile(os.path.join(test_dir, "obj_dir", "VWrappedPE__ALL.a"))
 
-    tester.compile_and_run(target="verilator",
-                           directory=test_dir,
-                           flags=['-Wno-UNUSED', '-Wno-PINNOCONNECT'],
-                           skip_compile=True,
-                           skip_verilator=skip_verilator)
-test_func_and_rtl()
+    if CAD_ENV:
+        # use ncsim
+        libs = ["DW_fp_mult.v", "DW_fp_add.v", "DW_fp_addsub.v"]
+        for filename in libs:
+            copy_file(os.path.join(cw_dir, filename),
+                      os.path.join(test_dir, filename))
+        tester.compile_and_run(target="system-verilog", simulator="ncsim",
+                               directory="tests/build/",
+                               include_verilog_libraries=libs,
+                               skip_compile=False)
+    else:
+        libs = ["DW_fp_mult.v", "DW_fp_add.v"]
+        for filename in libs:
+            copy_file(os.path.join("stubs", filename),
+                      os.path.join(test_dir, filename))
+        # # detect if the PE circuit has been built
+        # skip_verilator = os.path.isfile(os.path.join(test_dir, "obj_dir",
+        #                                              "VWrappedPE__ALL.a"))
+        tester.compile_and_run(target="verilator",
+                               directory=test_dir,
+                               flags=['-Wno-UNUSED', '-Wno-PINNOCONNECT'],
+                               skip_compile=True,
+                               skip_verilator=False)
+test_func()
+test_rtl()
 
 print("SUCCESS: Passed all tests")

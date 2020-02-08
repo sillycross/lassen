@@ -1,19 +1,22 @@
 import json
 
 class Arch():
-    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, outputs):
+    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, inputs, outputs):
         self.width = width
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.num_alu = num_alu
         self.num_mul = num_mul
+        self.num_mux_in0 = num_mux_in0
+        self.num_mux_in1 = num_mux_in1
+        self.inputs = inputs
         self.outputs = outputs
         self.modules = []
 			
 class module():
-    def __init__(self, type_, out, in0, in1):
+    def __init__(self, id, type_, in0, in1):
+        self.id = id
         self.type_ = type_
-        self.out = out
         self.in0 = in0
         self.in1 = in1
 
@@ -24,55 +27,69 @@ def read_arch(json_file_str):
         json_in = json.loads(json_file.read())
         num_alu = 0
         num_mul = 0
+        num_mux_in0 = 0
+        num_mux_in1 = 0
         modules_json = json_in['modules']
         modules = []
+        inputs = []
+        ids = []
+
         for module_json in modules_json:
-            modules.append(module(module_json['type'], module_json['out'], module_json['in0'], module_json['in1']))
-            if module_json['type'] == "alu":
+            new_module = module( module_json['id'], module_json['type'], module_json['in0'], module_json['in1'])
+            modules.append(new_module)
+            
+            if new_module.type_ == "alu":
                 num_alu += 1
-            elif module_json['type'] == "mul":
+            elif new_module.type_ == "mul":
                 num_mul += 1
             else:
                 raise ValueError('Unrecognized module type in specification')
-        arch = Arch(json_in['width'], json_in['num_inputs'], json_in['num_outputs'], num_alu, num_mul, json_in['outputs'])
-    
-    # modules_sorted = []
-    # signals = list(range(arch.num_inputs))
+            if isinstance(new_module.in0, list) and len(new_module.in0) > 1:
+                num_mux_in0 += 1
+                for in0 in new_module.in0:
+                    if in0 not in inputs:
+                        inputs.append(in0)
+            else:
+                if new_module.in0 not in inputs:
+                    inputs.append(new_module.in0)
 
-    # counter = len(modules)
+            if isinstance(new_module.in1, list) and len(new_module.in1) > 1:
+                num_mux_in1 += 1
+                for in1 in new_module.in1:
+                    if in1 not in inputs:
+                        inputs.append(in1)
+            else:
+                if new_module.in1 not in inputs:
+                    inputs.append(new_module.in1)
 
-    # while len(modules) > 0:
-    #     if counter == 0:
-    #         raise ValueError('Make sure there are no self-loops in your specification')
-    #     module_ = modules[0]
-    #     signals_in_list = True
-    #     for in0 in module_.in0:
-    #         if in0 not in signals:
-    #             signals_in_list = False
-    #     for in1 in module_.in1:
-    #         if in1 not in signals:
-    #             signals_in_list = False
-    #     if signals_in_list:
-    #         counter = len(modules)
-    #         making_progress = True
-    #         signals.append(module_.out)
-    #         modules_sorted.append(module_)
-    #         modules.remove(module_)
-    #     else:
-    #         counter -= 1
-    #         modules.remove(module_)
-    #         modules.append(module_)
+            if new_module.id in ids:
+                raise ValueError('Two modules with the same ID')
+            else:
+                ids.append(new_module.id)
 
-    signals = list(range(arch.num_inputs))
-    for module_ in modules:
-        signals_in_list = True
-        for in0 in module_.in0:
-            if in0 not in signals:
-                raise ValueError('Make sure there are no self-loops in your specification')
-        for in1 in module_.in1:
-            if in1 not in signals:
-                raise ValueError('Make sure there are no self-loops in your specification')
-        signals.append(module_.out)
+        unique_inputs = list(set(inputs) - set(ids))
+        num_inputs = len(unique_inputs)
+        num_outputs = len(json_in['outputs'])
 
-    arch.modules = modules
-    return arch
+        print(unique_inputs)
+
+        signals = unique_inputs
+        for module_ in modules:
+            if not isinstance(module_.in0, list):
+                module_.in0 = [module_.in0]
+            if not isinstance(module_.in1, list):
+                module_.in1 = [module_.in1]
+
+            for in0 in module_.in0:
+                if in0 not in signals:
+                    raise ValueError('Make sure there are no self-loops in your specification')
+            for in1 in module_.in1:
+                if in1 not in signals:
+                    raise ValueError('Make sure there are no self-loops in your specification')
+            signals.append(module_.id)
+
+        arch = Arch(json_in['width'], num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, unique_inputs, json_in['outputs'])
+        arch.modules = modules
+        return arch
+
+

@@ -1,6 +1,4 @@
 {
-  "num_inputs": 18,
-  "num_outputs": 1,
   "outputs": [
     100
   ],
@@ -10,103 +8,103 @@
       "type": "mul",
       "in0": 0,
       "in1": 1,
-      "out": 20
+      "id": 20
     },
     {
       "type": "mul",
       "in0": 2,
       "in1": 3,
-      "out": 21
+      "id": 21
     },
     {
       "type": "mul",
       "in0": 4,
       "in1": 5,
-      "out": 22
+      "id": 22
     },
     {
       "type": "mul",
       "in0": 6,
       "in1": 7,
-      "out": 23
+      "id": 23
     },
     {
       "type": "mul",
       "in0": 8,
       "in1": 9,
-      "out": 24
+      "id": 24
     },
     {
       "type": "mul",
       "in0": 10,
       "in1": 11,
-      "out": 25
+      "id": 25
     },
     {
       "type": "mul",
       "in0": 12,
       "in1": 13,
-      "out": 26
+      "id": 26
     },
     {
       "type": "mul",
       "in0": 14,
       "in1": 15,
-      "out": 27
+      "id": 27
     },
     {
       "type": "mul",
       "in0": 16,
       "in1": 17,
-      "out": 28
+      "id": 28
     },
     {
       "type": "alu",
       "in0": 20,
       "in1": 21,
-      "out": 30
+      "id": 30
     },
     {
       "type": "alu",
       "in0": 22,
       "in1": 30,
-      "out": 40
+      "id": 40
     },
     {
       "type": "alu",
       "in0": 23,
       "in1": 40,
-      "out": 50
+      "id": 50
     },
     {
       "type": "alu",
       "in0": 24,
       "in1": 50,
-      "out": 60
+      "id": 60
     },
     {
       "type": "alu",
       "in0": 25,
       "in1": 60,
-      "out": 70
+      "id": 70
     },
     {
       "type": "alu",
       "in0": 26,
       "in1": 70,
-      "out": 80
+      "id": 80
     },
     {
       "type": "alu",
       "in0": 27,
       "in1": 80,
-      "out": 90
+      "id": 90
     },
     {
       "type": "alu",
       "in0": 28,
       "in1": 90,
-      "out": 100
+      "id": 100
     }
   ]
 }

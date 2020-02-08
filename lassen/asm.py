@@ -13,8 +13,11 @@ def asm_arch_closure(arch):
     Signed_t = Inst.signed
     DataConst = Inst.data0
     BitConst = Inst.bit0
-    mux_list_type_in0 = Inst.mux_in0
-    mux_list_type_in1 = Inst.mux_in1
+    
+    if arch.num_mux_in0 > 0:
+        mux_list_type_in0 = Inst.mux_in0
+    if arch.num_mux_in1 > 0:
+        mux_list_type_in1 = Inst.mux_in1
 
     #Lut Constants
     # B0 = BitVector[8]([0, 1, 0, 1, 0, 1, 0, 1])
@@ -32,11 +35,30 @@ def asm_arch_closure(arch):
         Format a configuration of the PE - sets all fields
         """
         
-        return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
-                    Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
-                    DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
-                    Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
-                    BitConst(rf_const))
+        if arch.num_mux_in0 > 0 and arch.num_mux_in1 > 0:
+            return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
+                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
+                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                        BitConst(rf_const))
+        elif arch.num_mux_in0 > 0:
+            return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), signed, LUT_t(lut), cond,
+                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
+                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                        BitConst(rf_const))
+        elif arch.num_mux_in1 > 0:
+            return Inst(ALU_t_list_type(*alu), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
+                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
+                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                        BitConst(rf_const))
+        else:
+            return Inst(ALU_t_list_type(*alu), signed, LUT_t(lut), cond,
+                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
+                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                        BitConst(rf_const))
     return gen_inst
 
 # helper functions to format configurations

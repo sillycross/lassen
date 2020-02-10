@@ -92,7 +92,7 @@ inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1)
 
 inputs = [random.randint(0, 2**4) for _ in range(num_inputs)]
 inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
-
+print(inputs)
 
 signals = {}
 

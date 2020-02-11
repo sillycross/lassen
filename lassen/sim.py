@@ -49,12 +49,18 @@ def arch_closure(arch):
 
         @assemble(family, locals(), globals())
         class PE(Peak):
-
+            @end_rewrite()
+            @loop_unroll()
+            @begin_rewrite()
             def __init__(self):
 
                 # Data registers
-                self.rega: DataReg = DataReg()
-                self.regb: DataReg = DataReg()
+                # self.rega: DataReg = DataReg()
+                # self.regb: DataReg = DataReg()
+
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
+                    self.reg_init_unroll: DataReg = DataReg()
+
 
                 # Bit Registers
                 self.regd: BitReg = BitReg()
@@ -65,10 +71,10 @@ def arch_closure(arch):
                 # self.alu: ALU = ALU()
                 # self.mul: MUL = MUL()
 
-                # for i in ast_tools.macros.unroll(range(arch.num_alu)):
-                #     setattr(self, f"alu_{i}", ALU())
-                # for j in ast_tools.macros.unroll(range(arch.num_mul)):
-                #     setattr(self, f"mul_{j}", MUL())
+                # for init_unroll in ast_tools.macros.unroll(range(arch.num_alu)):
+                #     self.alu_init_unroll: ALU = ALU()
+                # for init_unroll in ast_tools.macros.unroll(range(arch.num_mul)):
+                #     self.mul_init_unroll: MUL = MUL()
                 
 
                 #Condition code
@@ -98,12 +104,12 @@ def arch_closure(arch):
                 bit012_addr = (config_addr[:3] == BitVector[3](BIT012_ADDR))
 
                 #ra
-                ra_we = (data01_addr & config_en)
-                ra_config_wdata = config_data[DATA0_START:DATA0_START+DATA0_WIDTH]
+                reg_we = (data01_addr & config_en)
+                reg_config_wdata = config_data[DATA0_START:DATA0_START+DATA0_WIDTH]
 
-                #rb
-                rb_we = ra_we
-                rb_config_wdata = config_data[DATA1_START:DATA1_START+DATA1_WIDTH]
+                # #rb
+                # rb_we = ra_we
+                # rb_config_wdata = config_data[DATA1_START:DATA1_START+DATA1_WIDTH]
 
                 #rd
                 rd_we = (bit012_addr & config_en)
@@ -116,8 +122,15 @@ def arch_closure(arch):
                 #rf
                 rf_we = rd_we
                 rf_config_wdata = config_data[BIT2_START]
-                ra, ra_rdata = self.rega(inst.rega, inst.data0, inputs[0], clk_en, ra_we, ra_config_wdata)
-                rb, rb_rdata = self.regb(inst.regb, inst.data1, inputs[1], clk_en, rb_we, rb_config_wdata)
+
+                signals = {}
+                rdata = {}
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
+                    signals[arch.inputs[init_unroll]], rdata[init_unroll] = self.reg_init_unroll(inst.reg[init_unroll], inst.data[init_unroll], inputs[init_unroll], clk_en, reg_we, reg_config_wdata)
+
+
+                # ra, ra_rdata = self.rega(inst.rega, inst.data0, inputs[0], clk_en, ra_we, ra_config_wdata)
+                # rb, rb_rdata = self.regb(inst.regb, inst.data1, inputs[1], clk_en, rb_we, rb_config_wdata)
 
                 rd, rd_rdata = self.regd(inst.regd, inst.bit0, bit0, clk_en, rd_we, rd_config_wdata)
                 re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
@@ -127,13 +140,12 @@ def arch_closure(arch):
                 #Calculate read_config_data
                 read_config_data = bit012_addr.ite(
                     BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
-                    ra_rdata.concat(rb_rdata)
+                    rdata[0].concat(rdata[1])
                 )
 
-                signals = {}
 
-                for i in ast_tools.macros.unroll(range(arch.num_inputs)):
-                    signals[arch.inputs[i]] = inputs[i]
+                # for i in ast_tools.macros.unroll(range(arch.num_inputs)):
+                #     signals[arch.inputs[i]] = inputs[i]
 
                 # mul_idx = 0
                 # alu_idx = 0

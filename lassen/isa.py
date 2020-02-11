@@ -26,11 +26,16 @@ def inst_arch_closure(arch):
             ALU_t_list_type = m.Tuple[(ALU_t for _ in range(arch.num_alu))]
             mux_list_type_in0 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
             mux_list_type_in1 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
+            Mode_t_list_type = m.Tuple[(Mode_t for _ in range(arch.num_inputs))]
+            Data_list_type = m.Tuple[(Data for _ in range(arch.num_inputs))]
         else:
             ALU_t, Signed_t = ALU_t_fc(family)
             ALU_t_list_type = Tuple[(ALU_t for _ in range(arch.num_alu))]
             mux_list_type_in0 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
             mux_list_type_in1 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
+            Mode_t_list_type = Tuple[(Mode_t for _ in range(arch.num_inputs))]
+            Data_list_type = Tuple[(Data for _ in range(arch.num_inputs))]
+
 
 
 
@@ -39,16 +44,16 @@ def inst_arch_closure(arch):
 
             if arch.num_mux_in0 > 0:
                 mux_in0 = mux_list_type_in0
-
             if arch.num_mux_in1 > 0:
                 mux_in1 = mux_list_type_in1
+
             signed= Signed_t     # unsigned or signed
             lut= LUT_t          # LUT operation as a 3-bit LUT
             cond= Cond_t        # Condition code (see cond.py)
-            rega= Mode_t        # RegA mode (see mode.py)
-            data0= Data         # RegA constant (16-bits)
-            regb= Mode_t        # RegB mode
-            data1= Data         # RegB constant (16-bits)
+            reg= Mode_t_list_type        # RegA mode (see mode.py)
+            data= Data_list_type         # RegA constant (16-bits)
+
+            # LUT registers below this
             regd= Mode_t        # RegD mode
             bit0= Bit           # RegD constant (1-bit)
             rege= Mode_t        # RegE mode

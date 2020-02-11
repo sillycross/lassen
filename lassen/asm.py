@@ -1,18 +1,22 @@
 from dataclasses import dataclass
 from .isa import inst_arch_closure
-from hwtypes import BitVector, Bit
+from hwtypes import BitVector, Bit, Tuple
 import magma as m
+from .common import DATAWIDTH
 
 def asm_arch_closure(arch):
     Inst_fc = inst_arch_closure(arch)
     Inst = Inst_fc(Bit.get_family())
+    Data = BitVector[DATAWIDTH]
     LUT_t = Inst.lut
     Cond_t = Inst.cond
-    Mode_t = Inst.rega
+    Mode_t = Inst.regd
     ALU_t_list_type = Inst.alu
     Signed_t = Inst.signed
-    DataConst = Inst.data0
     BitConst = Inst.bit0
+
+    Mode_t_list_type = Inst.reg
+    Data_list_type = Inst.data
     
     if arch.num_mux_in0 > 0:
         mux_list_type_in0 = Inst.mux_in0
@@ -25,8 +29,7 @@ def asm_arch_closure(arch):
     # B2 = BitVector[8]([0, 0, 0, 0, 1, 1, 1, 1])
 
     def gen_inst(alu, mux_in0, mux_in1, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z,
-            ra_mode=Mode_t.BYPASS, ra_const=0,  
-            rb_mode=Mode_t.BYPASS, rb_const=0,
+            reg_mode=[Mode_t.BYPASS for _ in range(arch.num_inputs)], reg_const=[Data(0) for _ in range(arch.num_inputs)],  
             rd_mode=Mode_t.BYPASS, rd_const=0,
             re_mode=Mode_t.BYPASS, re_const=0,
             rf_mode=Mode_t.BYPASS, rf_const=0):
@@ -37,26 +40,22 @@ def asm_arch_closure(arch):
         
         if arch.num_mux_in0 > 0 and arch.num_mux_in1 > 0:
             return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
-                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
-                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
                         Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
                         BitConst(rf_const))
         elif arch.num_mux_in0 > 0:
             return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), signed, LUT_t(lut), cond,
-                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
-                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
                         Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
                         BitConst(rf_const))
         elif arch.num_mux_in1 > 0:
             return Inst(ALU_t_list_type(*alu), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
-                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
-                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
                         Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
                         BitConst(rf_const))
         else:
             return Inst(ALU_t_list_type(*alu), signed, LUT_t(lut), cond,
-                        Mode_t(ra_mode), DataConst(ra_const), Mode_t(rb_mode),
-                        DataConst(rb_const), Mode_t(rd_mode), BitConst(rd_const),
+                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
                         Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
                         BitConst(rf_const))
     return gen_inst

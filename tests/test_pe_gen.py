@@ -27,7 +27,6 @@ num_alu = arch.num_alu
 Inst_fc = inst_arch_closure(arch)
 Inst = Inst_fc(Bit.get_family())
 ALU_t, Signed_t = ALU_t_fc(Bit.get_family())
-Mode_t = Inst.rega
 gen_inst = asm_arch_closure(arch)
 
 PE_fc = arch_closure(arch)
@@ -87,8 +86,12 @@ for i in range(len(arch.modules)):
         mux_list_inst_in1.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in1))](mux_list_in1[mux_1_idx]))
         mux_1_idx += 1
 
+Cond_t = Inst.cond
+Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1)
+inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1, Signed_t.unsigned, 0, Cond_t.Z,
+            [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
+            Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
 
 inputs = [random.randint(0, 2**4) for _ in range(num_inputs)]
 inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
@@ -136,6 +139,7 @@ print("Expected int result: ", res_comp)
 def test_func():
     pe = PE_bv()
     res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+    res_pe,_, _ = pe(inst_gen, inputs_to_PE)
     print("functional test result: ", [res_pe[i].value for i in range(num_outputs)])
     assert res_comp == [res_pe[i].value for i in range(num_outputs)] 
 
@@ -152,9 +156,11 @@ def test_rtl():
     # import pdb; pdb.set_trace()
     tester.circuit.inst = assembler(inst_gen)
     tester.circuit.CLK = 0
+    tester.circuit.clk_en = 1
 
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
+    tester.step()
     tester.circuit.O0.expect(res_comp)
     
         

@@ -1,7 +1,7 @@
 import json
 
 class Arch():
-    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, inputs, outputs):
+    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, inputs, outputs, enable_input_regs, enable_output_regs):
         self.width = width
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
@@ -12,6 +12,8 @@ class Arch():
         self.inputs = inputs
         self.outputs = outputs
         self.modules = []
+        self.enable_input_regs = enable_input_regs
+        self.enable_output_regs = enable_output_regs
 			
 class module():
     def __init__(self, id, type_, in0, in1):
@@ -88,7 +90,7 @@ def read_arch(json_file_str):
                     raise ValueError('Make sure there are no self-loops in your specification')
             signals.append(module_.id)
 
-        arch = Arch(json_in['width'], num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, unique_inputs, json_in['outputs'])
+        arch = Arch(json_in.get('width', 16), num_inputs, num_outputs, num_alu, num_mul, num_mux_in0, num_mux_in1, unique_inputs, json_in['outputs'], json_in.get('enable_input_regs', False), json_in.get('enable_output_regs', False))
         arch.modules = modules
         return arch
 

@@ -3,12 +3,14 @@
     20, 21, 30
   ],
   "width": 16,
+  "enable_input_regs": true,
+  "enable_output_regs": true,
   "modules": [
     {
       "id": 20,
       "type": "alu",
-      "in0": [10, 11],
-      "in1": [11, 10]
+      "in0": 30,
+      "in1": 21
     },
     {
       "id": 21,
@@ -19,8 +21,8 @@
     {
       "id": 30,
       "type": "mul",
-      "in0": [21, 11, 20, 10],
-      "in1": [20, 21, 10, 11]
+      "in0": 21,
+      "in1": 20
     }
   ]
 }

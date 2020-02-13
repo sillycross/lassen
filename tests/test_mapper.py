@@ -20,3 +20,5 @@ def test_add():
     solution = ir_mapper.solve('z3')
     assert solution.solved
     pretty_print_binding(solution.ibinding)
+
+test_add()

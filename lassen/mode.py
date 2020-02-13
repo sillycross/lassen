@@ -16,13 +16,13 @@ def Mode_t_fc(family):
 @lru_cache(None)
 def gen_register_mode(T, init=0):
     @family_closure
-    def RegisterMode_fc(family):
+    def RegisterWithConst_fc(family):
         T_f = rebind_type(T, family)
         Reg = gen_register(T_f, init)(family)
         Bit = family.Bit
         Mode_t = Mode_t_fc(family)
         @assemble(family, locals(), globals())
-        class RegisterMode(Peak):
+        class RegisterWithConst(Peak):
             def __init__(self):
                 self.register: Reg = Reg()
 
@@ -42,6 +42,6 @@ def gen_register_mode(T, init=0):
                     return value, reg_val
                 else: # mode == Mode_t.DELAY:
                     return reg_val, reg_val
-        return RegisterMode
+        return RegisterWithConst
 
-    return RegisterMode_fc
+    return RegisterWithConst_fc

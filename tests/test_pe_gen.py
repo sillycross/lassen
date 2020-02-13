@@ -139,7 +139,13 @@ print("Expected int result: ", res_comp)
 def test_func():
     pe = PE_bv()
     res_pe,_, _ = pe(inst_gen, inputs_to_PE)
-    res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+
+    # Need to advance clock cycles if regs are enabled
+    if (arch.enable_input_regs):
+        res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+    if (arch.enable_output_regs):
+        res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+    
     print("functional test result: ", [res_pe[i].value for i in range(num_outputs)])
     assert res_comp == [res_pe[i].value for i in range(num_outputs)] 
 
@@ -160,7 +166,10 @@ def test_rtl():
 
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
-    tester.step()
+    if (arch.enable_input_regs):
+        tester.step(2)
+    if (arch.enable_output_regs):
+        tester.step(2)
     tester.circuit.O0.expect(res_comp)
     
         

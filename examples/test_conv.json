@@ -5,6 +5,8 @@
     50,
     40
   ],
+  "enable_input_regs": true,
+  "enable_output_regs": true,
   "modules": [
     {
       "type": "mul",

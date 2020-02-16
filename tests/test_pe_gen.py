@@ -19,7 +19,7 @@ class HashableDict(dict):
 
 # with open('examples/conv_3_3_balanced.json') as json_file:
 arch = read_arch(str(sys.argv[1]))
-
+# import pdb; pdb.set_trace()
 width = arch.width
 num_inputs = arch.num_inputs
 num_outputs = arch.num_outputs
@@ -67,14 +67,16 @@ def copy_file(src_filename, dst_filename, override=False):
 
 
 # Define instruction here
+num_sim_cycles = 8
 alu_list = [ALU_t.Add for _ in range(num_alu)]
-mux_list_in0 = [1 for _ in range(arch.num_mux_in0)]
+mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
 mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
-
+mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
 
 
 mux_list_inst_in0 = []
 mux_list_inst_in1 = []
+mux_list_inst_reg = []
 
 mux_0_idx = 0
 mux_1_idx = 0
@@ -86,10 +88,16 @@ for i in range(len(arch.modules)):
         mux_list_inst_in1.append(BitVector[magma.math.log2_ceil(len(arch.modules[i].in1))](mux_list_in1[mux_1_idx]))
         mux_1_idx += 1
 
+mux_reg_idx = 0
+for i in range(len(arch.regs)):
+    if len(arch.regs[i].in_) > 1:
+        mux_list_inst_reg.append(BitVector[magma.math.log2_ceil(len(arch.regs[i].in_))](mux_list_reg[mux_reg_idx]))
+        mux_reg_idx += 1
+
 Cond_t = Inst.cond
 Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1, Signed_t.unsigned, 0, Cond_t.Z,
+inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, Signed_t.unsigned, 0, Cond_t.Z,
             [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
             Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
 
@@ -98,47 +106,70 @@ inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
 print(inputs)
 
 signals = {}
+signals_new = {}
 
-for i in range(num_inputs):
-    signals[arch.inputs[i]] = inputs[i]
+for i in arch.regs:
+    signals_new[i.id] = 0
 
-mux_idx_in0 = 0
-mux_idx_in1 = 0
-for mod in range(len(arch.modules)):
+for cyc in range(num_sim_cycles):
 
-    if len(arch.modules[mod].in0) == 1:
-        in0 = signals[arch.modules[mod].in0[0]]  
-    else:
-        in0_mux_select = mux_list_in0[mux_idx_in0]
-        mux_idx_in0 = mux_idx_in0 + 1
-        for mux_inputs in range(len(arch.modules[mod].in0)):
-            if in0_mux_select == mux_inputs:
-                in0 = signals[arch.modules[mod].in0[mux_inputs]]
+    signals = signals_new.copy()
 
-    if len(arch.modules[mod].in1) == 1:
-        in1 = signals[arch.modules[mod].in1[0]]  
-    else:
-        in1_mux_select = mux_list_in1[mux_idx_in1]
-        mux_idx_in1 = mux_idx_in1 + 1
-        for mux_inputs in range(len(arch.modules[mod].in1)):
-            if in1_mux_select == mux_inputs:
-                in1 = signals[arch.modules[mod].in1[mux_inputs]]
-
-    if (arch.modules[mod].type_ == "mul"):
-        signals[arch.modules[mod].id] = in0 * in1
-    elif (arch.modules[mod].type_ == "alu"):
-        signals[arch.modules[mod].id] = in0 + in1
+    for i in range(num_inputs):
+        signals[arch.inputs[i]] = inputs[i]
 
 
-res_comp = []
-for i in range(arch.num_outputs):
-    res_comp.append(signals[arch.outputs[i]])
+    mux_idx_in0 = 0
+    mux_idx_in1 = 0
+    for mod in range(len(arch.modules)):
 
-print("Expected int result: ", res_comp)
+        if len(arch.modules[mod].in0) == 1:
+            in0 = signals[arch.modules[mod].in0[0]]  
+        else:
+            in0_mux_select = mux_list_in0[mux_idx_in0]
+            mux_idx_in0 = mux_idx_in0 + 1
+            for mux_inputs in range(len(arch.modules[mod].in0)):
+                if in0_mux_select == mux_inputs:
+                    in0 = signals[arch.modules[mod].in0[mux_inputs]]
+
+        if len(arch.modules[mod].in1) == 1:
+            in1 = signals[arch.modules[mod].in1[0]]  
+        else:
+            in1_mux_select = mux_list_in1[mux_idx_in1]
+            mux_idx_in1 = mux_idx_in1 + 1
+            for mux_inputs in range(len(arch.modules[mod].in1)):
+                if in1_mux_select == mux_inputs:
+                    in1 = signals[arch.modules[mod].in1[mux_inputs]]
+
+        if (arch.modules[mod].type_ == "mul"):
+            signals[arch.modules[mod].id] = in0 * in1
+        elif (arch.modules[mod].type_ == "alu"):
+            signals[arch.modules[mod].id] = in0 + in1
+
+    signals_new = signals.copy()
+    for reg in arch.regs:
+        if len(reg.in_) == 1:
+            in_ = signals[reg.in_[0]]  
+        else:
+            in_mux_select = mux_list_in1[mux_idx_in1]
+            mux_idx_in1 = mux_idx_in1 + 1
+            for mux_inputs in range(len(reg.in_)):
+                if in_mux_select == mux_inputs:
+                    in_ = signals[reg.in_[mux_inputs]]
+        signals_new[reg.id] = in_
+
+
+    res_comp = []
+    for i in range(arch.num_outputs):
+        res_comp.append(signals[arch.outputs[i]])
+
+    print("Int test result: cycle", cyc, "=", res_comp)
 
 def test_func():
     pe = PE_bv()
-    res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+    for _ in range(num_sim_cycles):
+        res_pe,_, _ = pe(inst_gen, inputs_to_PE)
+        # print("functional test result: ", [res_pe[i].value for i in range(num_outputs)])
 
     # Need to advance clock cycles if regs are enabled
     if (arch.enable_input_regs):
@@ -166,10 +197,13 @@ def test_rtl():
 
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
-    if (arch.enable_input_regs):
-        tester.step(2)
+
     if (arch.enable_output_regs):
         tester.step(2)
+
+    for _ in range(num_sim_cycles):
+        tester.step(2)
+        
     tester.circuit.O0.expect(res_comp)
     
         

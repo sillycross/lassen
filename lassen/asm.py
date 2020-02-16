@@ -22,13 +22,15 @@ def asm_arch_closure(arch):
         mux_list_type_in0 = Inst.mux_in0
     if arch.num_mux_in1 > 0:
         mux_list_type_in1 = Inst.mux_in1
+    if arch.num_reg_mux > 0:
+        mux_list_type_reg = Inst.mux_reg
 
     #Lut Constants
     # B0 = BitVector[8]([0, 1, 0, 1, 0, 1, 0, 1])
     # B1 = BitVector[8]([0, 0, 1, 1, 0, 0, 1, 1])
     # B2 = BitVector[8]([0, 0, 0, 0, 1, 1, 1, 1])
 
-    def gen_inst(alu, mux_in0, mux_in1, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z,
+    def gen_inst(alu, mux_in0, mux_in1, mux_reg, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z,
             reg_mode=[Mode_t.BYPASS for _ in range(arch.num_inputs)], reg_const=[Data(0) for _ in range(arch.num_inputs)],  
             rd_mode=Mode_t.BYPASS, rd_const=0,
             re_mode=Mode_t.BYPASS, re_const=0,
@@ -37,27 +39,48 @@ def asm_arch_closure(arch):
         https://github.com/StanfordAHA/CGRAGenerator/wiki/PE-Spec
         Format a configuration of the PE - sets all fields
         """
-        
-        if arch.num_mux_in0 > 0 and arch.num_mux_in1 > 0:
-            return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
-                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
-                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
-                        BitConst(rf_const))
-        elif arch.num_mux_in0 > 0:
-            return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), signed, LUT_t(lut), cond,
-                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
-                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
-                        BitConst(rf_const))
-        elif arch.num_mux_in1 > 0:
-            return Inst(ALU_t_list_type(*alu), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
-                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
-                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
-                        BitConst(rf_const))
+        if arch.num_reg_mux > 0:
+            if arch.num_mux_in0 > 0 and arch.num_mux_in1 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), mux_list_type_reg(*mux_reg), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            elif arch.num_mux_in0 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_reg(*mux_reg), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            elif arch.num_mux_in1 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in1(*mux_in1), mux_list_type_reg(*mux_reg), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            else:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_reg(*mux_reg), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
         else:
-            return Inst(ALU_t_list_type(*alu), signed, LUT_t(lut), cond,
-                        Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
-                        Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
-                        BitConst(rf_const))
+            if arch.num_mux_in0 > 0 and arch.num_mux_in1 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            elif arch.num_mux_in0 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in0(*mux_in0), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            elif arch.num_mux_in1 > 0:
+                return Inst(ALU_t_list_type(*alu), mux_list_type_in1(*mux_in1), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
+            else:
+                return Inst(ALU_t_list_type(*alu), signed, LUT_t(lut), cond,
+                            Mode_t_list_type(*reg_mode), Data_list_type(*reg_const), Mode_t(rd_mode), BitConst(rd_const),
+                            Mode_t(re_mode), BitConst(re_const), Mode_t(rf_mode),
+                            BitConst(rf_const))
     return gen_inst
 
 # helper functions to format configurations

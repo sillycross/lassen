@@ -24,8 +24,10 @@ def arch_closure(arch):
         def BV1(bit):
             return bit.ite(family.BitVector[1](1), family.BitVector[1](0))
         Data = family.BitVector[DATAWIDTH]
+        UBit = family.Unsigned[1]
         Data8 = family.BitVector[8]
         Data32 = family.BitVector[32]
+        UData32 = family.Unsigned[32]
         Bit = family.Bit
         RegisterWithConst = gen_register_mode(Data, 0)(family)
         Register = gen_register(Data, 0)(family)
@@ -64,6 +66,9 @@ def arch_closure(arch):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_outputs)):
                         self.output_reg_init_unroll: Register = Register()
 
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
+                    self.regs_init_unroll: Register = Register()
+
 
                 # Bit Registers
                 self.regd: BitReg = BitReg()
@@ -81,7 +86,7 @@ def arch_closure(arch):
             @loop_unroll()
             @loop_unroll()
             @begin_rewrite()
-            @name_outputs(alu_res=DataOutputList, res_p=Bit, read_config_data=Data32)
+            @name_outputs(PE_res=DataOutputList, res_p=UBit, read_config_data=UData32)
             def __call__(self, inst: Inst, \
                 inputs : DataInputList, \
                 bit0: Bit = Bit(0), bit1: Bit = Bit(0), bit2: Bit = Bit(0), \
@@ -135,6 +140,9 @@ def arch_closure(arch):
                 )
 
 
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
+                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(Data(0), 0)
+
                 mux_idx_in0 = 0
                 mux_idx_in1 = 0
                 for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
@@ -165,6 +173,22 @@ def arch_closure(arch):
                         signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[0], inst.signed, in0, in1, rd)
                         # alu_idx += 1
                             
+
+                reg_mux_idx = 0
+
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
+                    if inline(len(arch.regs[init_unroll].in_) == 1):
+                        in_ = signals[arch.regs[init_unroll].in_[0]]  
+                    else:
+                        in_mux_select = inst.reg_mux[reg_mux_idx]
+                        reg_mux_idx = reg_mux_idx + 1
+
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.regs[init_unroll].in_))):
+                            if in_mux_select == family.BitVector[m.math.log2_ceil(len(arch.regs[init_unroll].in_))](mux_inputs):
+                                in_ = signals[arch.regs[init_unroll].in_[mux_inputs]]
+                            
+                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(in_, clk_en)
+
                 # calculate lut results
                 lut_res = self.lut(inst.lut, rd, re, rf)
 
@@ -183,9 +207,9 @@ def arch_closure(arch):
                         outputs_from_reg.append(temp)
 
                     # return 16-bit result, 1-bit result
-                    return DataOutputList(*outputs_from_reg), res_p, read_config_data
+                    return DataOutputList(*outputs_from_reg)[0], res_p, read_config_data
                 else:
-                    return DataOutputList(*outputs), res_p, read_config_data
+                    return DataOutputList(*outputs)[0], res_p, read_config_data
 
             # print(inspect.getsource(__init__)) 
             # print(inspect.getsource(__call__)) 

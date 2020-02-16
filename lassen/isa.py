@@ -26,6 +26,7 @@ def inst_arch_closure(arch):
             ALU_t_list_type = m.Tuple[(ALU_t for _ in range(arch.num_alu))]
             mux_list_type_in0 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
             mux_list_type_in1 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
+            mux_list_type_reg = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
             Mode_t_list_type = m.Tuple[(Mode_t for _ in range(arch.num_inputs))]
             Data_list_type = m.Tuple[(Data for _ in range(arch.num_inputs))]
         else:
@@ -33,6 +34,7 @@ def inst_arch_closure(arch):
             ALU_t_list_type = Tuple[(ALU_t for _ in range(arch.num_alu))]
             mux_list_type_in0 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
             mux_list_type_in1 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
+            mux_list_type_reg = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
             Mode_t_list_type = Tuple[(Mode_t for _ in range(arch.num_inputs))]
             Data_list_type = Tuple[(Data for _ in range(arch.num_inputs))]
 
@@ -46,6 +48,9 @@ def inst_arch_closure(arch):
                 mux_in0 = mux_list_type_in0
             if arch.num_mux_in1 > 0:
                 mux_in1 = mux_list_type_in1
+
+            if arch.num_reg_mux > 0:
+                mux_reg = mux_list_type_reg
 
             signed= Signed_t     # unsigned or signed
             lut= LUT_t          # LUT operation as a 3-bit LUT

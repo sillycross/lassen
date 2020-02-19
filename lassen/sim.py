@@ -145,6 +145,8 @@ def arch_closure(arch):
 
                 mux_idx_in0 = 0
                 mux_idx_in1 = 0
+                mul_idx = 0
+                alu_idx = 0
                 for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
 
                     if inline(len(arch.modules[mod_index].in0) == 1):
@@ -166,12 +168,12 @@ def arch_closure(arch):
                                 in1 = signals[arch.modules[mod_index].in1[mux_inputs]]
 
                     if inline(arch.modules[mod_index].type_ == "mul"):
-                        signals[arch.modules[mod_index].id] = MUL(inst.signed, in0, in1)
-                        # mul_idx += 1
+                        signals[arch.modules[mod_index].id] = MUL(inst.mul[mul_idx], inst.signed, in0, in1)
+                        mul_idx = mul_idx + 1
                         
                     elif inline(arch.modules[mod_index].type_ == "alu"):
-                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[0], inst.signed, in0, in1, rd)
-                        # alu_idx += 1
+                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[alu_idx], inst.signed, in0, in1, rd)
+                        alu_idx = alu_idx + 1
                             
 
                 reg_mux_idx = 0
@@ -180,7 +182,7 @@ def arch_closure(arch):
                     if inline(len(arch.regs[init_unroll].in_) == 1):
                         in_ = signals[arch.regs[init_unroll].in_[0]]  
                     else:
-                        in_mux_select = inst.reg_mux[reg_mux_idx]
+                        in_mux_select = inst.mux_reg[reg_mux_idx]
                         reg_mux_idx = reg_mux_idx + 1
 
                         for mux_inputs in ast_tools.macros.unroll(range(len(arch.regs[init_unroll].in_))):
@@ -207,9 +209,9 @@ def arch_closure(arch):
                         outputs_from_reg.append(temp)
 
                     # return 16-bit result, 1-bit result
-                    return DataOutputList(*outputs_from_reg)[0], res_p, read_config_data
+                    return DataOutputList(*outputs_from_reg), res_p, read_config_data
                 else:
-                    return DataOutputList(*outputs)[0], res_p, read_config_data
+                    return DataOutputList(*outputs), res_p, read_config_data
 
             # print(inspect.getsource(__init__)) 
             # print(inspect.getsource(__call__)) 

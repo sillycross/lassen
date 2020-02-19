@@ -8,6 +8,7 @@ from lassen.common import DATAWIDTH, BFloat16_fc
 from lassen.arch import read_arch
 from lassen.asm import asm_arch_closure
 from lassen.alu import ALU_t_fc
+from lassen.mul import MUL_t_fc
 from hwtypes import Bit, BitVector
 import os
 import sys
@@ -27,6 +28,7 @@ num_alu = arch.num_alu
 Inst_fc = inst_arch_closure(arch)
 Inst = Inst_fc(Bit.get_family())
 ALU_t, Signed_t = ALU_t_fc(Bit.get_family())
+MUL_t, Signed_t = MUL_t_fc(Bit.get_family())
 gen_inst = asm_arch_closure(arch)
 
 PE_fc = arch_closure(arch)
@@ -68,7 +70,8 @@ def copy_file(src_filename, dst_filename, override=False):
 
 # Define instruction here
 num_sim_cycles = 8
-alu_list = [ALU_t.Add for _ in range(num_alu)]
+alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
+mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
 mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
 mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
 mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
@@ -97,7 +100,7 @@ for i in range(len(arch.regs)):
 Cond_t = Inst.cond
 Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, Signed_t.unsigned, 0, Cond_t.Z,
+inst_gen = gen_inst(alu_list, mul_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, Signed_t.unsigned, 0, Cond_t.Z,
             [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
             Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
 
@@ -147,12 +150,13 @@ for cyc in range(num_sim_cycles):
             signals[arch.modules[mod].id] = in0 + in1
 
     signals_new = signals.copy()
+    mux_idx_reg = 0
     for reg in arch.regs:
         if len(reg.in_) == 1:
             in_ = signals[reg.in_[0]]  
         else:
-            in_mux_select = mux_list_in1[mux_idx_in1]
-            mux_idx_in1 = mux_idx_in1 + 1
+            in_mux_select = mux_list_in1[mux_idx_reg]
+            mux_idx_reg = mux_idx_reg + 1
             for mux_inputs in range(len(reg.in_)):
                 if in_mux_select == mux_inputs:
                     in_ = signals[reg.in_[mux_inputs]]

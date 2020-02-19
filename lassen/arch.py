@@ -122,3 +122,32 @@ def read_arch(json_file_str):
         arch.modules = modules
         arch.regs = regs
         return arch
+
+
+def graph_arch(arch: Arch):
+    from graphviz import Digraph
+
+    graph = Digraph()
+
+    for module in arch.modules:
+        if module.type_ == "alu":
+            graph.node(str(module.id), "alu")
+        elif module.type_ == "mul":
+            graph.node(str(module.id), "mul")
+        
+        for in0 in module.in0:
+            graph.edge(str(in0), str(module.id))
+        for in1 in module.in1:
+            graph.edge(str(in1), str(module.id))
+
+    for reg in arch.regs:
+        graph.node(str(reg.id), "reg")
+
+        for in_ in reg.in_:
+            graph.edge(str(in_), str(reg.id))
+
+    for i, output in enumerate(arch.outputs):
+        graph.edge(str(output), "out_" + str(i))
+
+    print(graph.source)
+    graph.render("arch_graph", view=True)

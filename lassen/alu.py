@@ -34,9 +34,9 @@ def ALU_t_fc(family):
         LTE_Min = 5
         Sel = 8
         # Remeber to remove mul operation from ALU
-        Mult0 = 0xb
-        Mult1 = 0xc
-        Mult2 = 0xd
+        # Mult0 = 0xb
+        # Mult1 = 0xc
+        # Mult2 = 0xd
         SHR = 0xf
         SHL = 0x11
         Or = 0x12
@@ -114,7 +114,7 @@ def ALU_fc(family):
         if signed_ == Signed_t.signed:
             a_s = SData(a)
             b_s = SData(b)
-            mula, mulb = UData32(a_s.sext(16)), UData32(b_s.sext(16))
+            
             gte_pred = a_s >= b_s
             lte_pred = a_s <= b_s
             abs_pred = a_s >= 0
@@ -122,12 +122,12 @@ def ALU_fc(family):
         else: #signed_ == Signed_t.unsigned:
             a_u = UData(a)
             b_u = UData(b)
-            mula, mulb = a_u.zext(16), b_u.zext(16)
+            
             gte_pred = a_u >= b_u
             lte_pred = a_u <= b_u
             abs_pred = a_u >= 0
             shr = Data(a_u >> b_u)
-        mul = mula * mulb
+        
         a_inf = fp_is_inf(a)
         b_inf = fp_is_inf(b)
         a_neg = fp_is_neg(a)
@@ -245,15 +245,7 @@ def ALU_fc(family):
             res, C = UData(a).adc(UData(b), Cin)
             V = overflow(a, b, res)
             res_p = C
-        elif alu == ALU_t.Mult0:
-            res, C, V = mul[:16], Bit(0), Bit(0)  # wrong C, V
-            res_p = C
-        elif alu == ALU_t.Mult1:
-            res, C, V = mul[8:24], Bit(0), Bit(0)  # wrong C, V
-            res_p = C
-        elif alu == ALU_t.Mult2:
-            res, C, V = mul[16:32], Bit(0), Bit(0)  # wrong C, V
-            res_p = C
+        
         elif alu == ALU_t.GTE_Max:
             # C, V = a-b?
             res, res_p = gte_pred.ite(a, b), gte_pred

@@ -72,14 +72,16 @@ def copy_file(src_filename, dst_filename, override=False):
 num_sim_cycles = 8
 alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
 mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
+reg_en_list = [Bit(1) for _ in range(arch.num_reg)]
 mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
-mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
-mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
-
+mux_list_in1 = [6 for _ in range(arch.num_mux_in1)]
+mux_list_reg = [1 for _ in range(arch.num_reg_mux)]
+mux_list_out = [2 for _ in range(arch.num_output_mux)]
 
 mux_list_inst_in0 = []
 mux_list_inst_in1 = []
 mux_list_inst_reg = []
+mux_list_inst_out = []
 
 mux_0_idx = 0
 mux_1_idx = 0
@@ -97,10 +99,17 @@ for i in range(len(arch.regs)):
         mux_list_inst_reg.append(BitVector[magma.math.log2_ceil(len(arch.regs[i].in_))](mux_list_reg[mux_reg_idx]))
         mux_reg_idx += 1
 
+
+mux_out_idx = 0
+for i in range(arch.num_outputs):
+    if len(arch.outputs[i]) > 1:
+        mux_list_inst_out.append(BitVector[magma.math.log2_ceil(len(arch.outputs[i]))](mux_list_out[mux_out_idx]))
+        mux_out_idx += 1
+
 Cond_t = Inst.cond
 Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mul_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, Signed_t.unsigned, 0, Cond_t.Z,
+inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z,
             [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
             Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
 
@@ -155,7 +164,7 @@ for cyc in range(num_sim_cycles):
         if len(reg.in_) == 1:
             in_ = signals[reg.in_[0]]  
         else:
-            in_mux_select = mux_list_in1[mux_idx_reg]
+            in_mux_select = mux_list_reg[mux_idx_reg]
             mux_idx_reg = mux_idx_reg + 1
             for mux_inputs in range(len(reg.in_)):
                 if in_mux_select == mux_inputs:
@@ -164,8 +173,20 @@ for cyc in range(num_sim_cycles):
 
 
     res_comp = []
-    for i in range(arch.num_outputs):
-        res_comp.append(signals[arch.outputs[i]])
+
+    mux_idx_out = 0
+    for out in arch.outputs:
+        if len(out) == 1:
+            res_comp.append(signals[out[0]])
+        else:
+            out_mux_select = mux_list_out[mux_idx_out]
+            mux_idx_out = mux_idx_out + 1
+            for out_inputs in range(len(out)):
+                if out_mux_select == out_inputs:
+                    res_comp.append(signals[out[out_inputs]])
+
+    # for i in range(arch.num_outputs):
+    #     res_comp.append(signals[arch.outputs[i]])
 
     print("Int test result: cycle", cyc, "=", res_comp)
 
@@ -202,10 +223,13 @@ def test_rtl():
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
 
+    if (arch.enable_input_regs):
+        tester.step(2)
+
     if (arch.enable_output_regs):
         tester.step(2)
 
-    for _ in range(num_sim_cycles):
+    for _ in range(num_sim_cycles - 1):
         tester.step(2)
         
     tester.circuit.O0.expect(res_comp)

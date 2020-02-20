@@ -1,6 +1,6 @@
 {
   "outputs": [
-    "alu_out"
+    ["alu_out", "mul_out"]
   ],
   "width": 16,
   "enable_input_regs": false,
@@ -9,7 +9,7 @@
     {
       "id": "mul_out",
       "type": "mul",
-      "in0": "in0",
+      "in0": ["in0", "in1"],
       "in1": "in1"
     },
     {

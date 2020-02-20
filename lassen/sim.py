@@ -60,7 +60,7 @@ def arch_closure(arch):
                 # Data registers
                 if inline(arch.enable_input_regs):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        self.input_reg_init_unroll: RegisterWithConst = RegisterWithConst()
+                        self.input_reg_init_unroll: Register = Register()
 
                 if inline(arch.enable_output_regs):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_outputs)):
@@ -122,7 +122,7 @@ def arch_closure(arch):
 
                 if inline(arch.enable_input_regs):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        signals[arch.inputs[init_unroll]], rdata[init_unroll] = self.input_reg_init_unroll(inst.reg[init_unroll], inst.data[init_unroll], inputs[init_unroll], clk_en, reg_we, reg_config_wdata)
+                        signals[arch.inputs[init_unroll]], rdata[init_unroll] = self.input_reg_init_unroll(inputs[init_unroll], clk_en)
                 else:
                     for i in ast_tools.macros.unroll(range(arch.num_inputs)):
                         signals[arch.inputs[i]] = inputs[i]
@@ -189,7 +189,7 @@ def arch_closure(arch):
                             if in_mux_select == family.BitVector[m.math.log2_ceil(len(arch.regs[init_unroll].in_))](mux_inputs):
                                 in_ = signals[arch.regs[init_unroll].in_[mux_inputs]]
                             
-                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(in_, clk_en)
+                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(in_, clk_en.ite(inst.reg_en[init_unroll], Bit(0)))
 
                 # calculate lut results
                 lut_res = self.lut(inst.lut, rd, re, rf)
@@ -197,10 +197,23 @@ def arch_closure(arch):
                 # calculate 1-bit result
                 res_p = self.cond(inst.cond, alu_res_p, lut_res, Z, N, C, V)
 
-
+                
                 outputs = []
-                for i in ast_tools.macros.unroll(range(arch.num_outputs)):
-                    outputs.append(signals[arch.outputs[i]])
+                mux_idx_out = 0
+                for out_index in ast_tools.macros.unroll(range(arch.num_outputs)):
+                    if inline(len(arch.outputs[out_index]) == 1):
+                        output_temp = signals[arch.outputs[out_index][0]]
+                    else:
+                        out_mux_select = inst.mux_out[mux_idx_out]
+                        mux_idx_out = mux_idx_out + 1
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.outputs[out_index]))):
+                            if out_mux_select == family.BitVector[m.math.log2_ceil(len(arch.outputs[out_index]))](mux_inputs):
+                                output_temp = signals[arch.outputs[out_index][mux_inputs]]
+                    outputs.append(output_temp)
+
+
+                # for i in ast_tools.macros.unroll(range(arch.num_outputs)):
+                #     outputs.append(signals[arch.outputs[i]])
 
                 if inline(arch.enable_output_regs):
                     outputs_from_reg = []

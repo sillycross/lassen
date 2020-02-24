@@ -36,12 +36,16 @@ def asm_arch_closure(arch):
     if arch.num_output_mux > 0:
         mux_list_type_output = Inst.mux_out
 
+    if arch.num_counter > 0:
+        counter_en_list_type = Inst.counter_en
+        counter_rst_list_type = Inst.counter_rst
+
     #Lut Constants
     # B0 = BitVector[8]([0, 1, 0, 1, 0, 1, 0, 1])
     # B1 = BitVector[8]([0, 0, 1, 1, 0, 0, 1, 1])
     # B2 = BitVector[8]([0, 0, 0, 0, 1, 1, 1, 1])
 
-    def gen_inst(alu, mul, reg_en, mux_in0, mux_in1, mux_reg, mux_out, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z,
+    def gen_inst(alu, mul, reg_en, mux_in0, mux_in1, mux_reg, mux_out, counter_en, counter_rst, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z,
             reg_mode=[Mode_t.BYPASS for _ in range(arch.num_inputs)], reg_const=[Data(0) for _ in range(arch.num_inputs)],  
             rd_mode=Mode_t.BYPASS, rd_const=0,
             re_mode=Mode_t.BYPASS, re_const=0,
@@ -73,6 +77,10 @@ def asm_arch_closure(arch):
 
         if arch.num_output_mux > 0:
             args.append(mux_list_type_output(*mux_out) )
+
+        if arch.num_counter > 0:
+            args.append(counter_en_list_type(*counter_en))
+            args.append(counter_rst_list_type(*counter_rst))
 
         args.append(signed )
         args.append(LUT_t(lut) )

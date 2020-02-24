@@ -1,7 +1,7 @@
 import json
 
 class Arch():
-    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, inputs, outputs, enable_input_regs, enable_output_regs):
+    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, num_counter, inputs, outputs, enable_input_regs, enable_output_regs):
         self.width = width
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
@@ -12,10 +12,12 @@ class Arch():
         self.num_mux_in1 = num_mux_in1
         self.num_reg_mux = num_reg_mux
         self.num_output_mux = num_output_mux
+        self.num_counter = num_counter
         self.inputs = inputs
         self.outputs = outputs
         self.modules = []
         self.regs = []
+        self.counters = []
         self.enable_input_regs = enable_input_regs
         self.enable_output_regs = enable_output_regs
 			
@@ -31,6 +33,11 @@ class reg():
         self.id = id
         self.in_ = in_
 
+class counter():
+    def __init__(self, id, width):
+        self.id = id
+        self.width = width
+
 def read_arch(json_file_str):
     # with open('examples/test_json.json') as json_file:
 
@@ -39,12 +46,14 @@ def read_arch(json_file_str):
         num_alu = 0
         num_mul = 0
         num_reg = 0
+        num_counter = 0
         num_mux_in0 = 0
         num_mux_in1 = 0
         num_reg_mux = 0
         modules_json = json_in['modules']
         modules = []
         regs = []
+        counters = []
         inputs = []
         ids = []
 
@@ -71,6 +80,9 @@ def read_arch(json_file_str):
                     ids.append(new_reg.id)
 
                 regs.append(new_reg)
+            elif module_json['type'] == "counter":
+                num_counter += 1
+                counters.append(counter(module_json['id'], module_json['width']))
             else:
                 new_module = module( module_json['id'], module_json['type'], module_json['in0'], module_json.get('in1'))
                 
@@ -130,10 +142,11 @@ def read_arch(json_file_str):
 
 
         arch = Arch(json_in.get('width', 16), num_inputs, num_outputs, num_alu, num_mul, 
-                    num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, unique_inputs, outputs, 
+                    num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, num_counter, unique_inputs, outputs, 
                     json_in.get('enable_input_regs', False), json_in.get('enable_output_regs', False))
         arch.modules = modules
         arch.regs = regs
+        arch.counters = counters
         return arch
 
 

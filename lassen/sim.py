@@ -14,6 +14,7 @@ from .cond import Cond_fc
 from .isa import inst_arch_closure
 from .arch import *
 from .mul import MUL_fc
+from .counter import Counter_fc
 
 def arch_closure(arch):
     @family_closure
@@ -32,6 +33,7 @@ def arch_closure(arch):
         RegisterWithConst = gen_register_mode(Data, 0)(family)
         Register = gen_register(Data, 0)(family)
         BitReg = gen_register_mode(Bit, 0)(family)
+        Counter = Counter_fc(family)
         ALU = ALU_fc(family)
         Cond = Cond_fc(family)
         LUT = LUT_fc(family)
@@ -69,7 +71,8 @@ def arch_closure(arch):
                 for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
                     self.regs_init_unroll: Register = Register()
 
-
+                # for init_unroll in ast_tools.macros.unroll(range(len(arch.counters))):
+                #     self.counter_init_unroll: Counter = Counter()
                 # Bit Registers
                 self.regd: BitReg = BitReg()
                 self.rege: BitReg = BitReg()
@@ -122,11 +125,12 @@ def arch_closure(arch):
 
                 if inline(arch.enable_input_regs):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        signals[arch.inputs[init_unroll]], rdata[init_unroll] = self.input_reg_init_unroll(inputs[init_unroll], clk_en)
+                        signals[arch.inputs[init_unroll]] = self.input_reg_init_unroll(inputs[init_unroll], clk_en)
+                        
                 else:
                     for i in ast_tools.macros.unroll(range(arch.num_inputs)):
                         signals[arch.inputs[i]] = inputs[i]
-                        rdata[i] = Data(0)
+                        
 
                 rd, rd_rdata = self.regd(inst.regd, inst.bit0, bit0, clk_en, rd_we, rd_config_wdata)
                 re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
@@ -136,12 +140,16 @@ def arch_closure(arch):
                 #Calculate read_config_data
                 read_config_data = bit012_addr.ite(
                     BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
-                    rdata[0].concat(rdata[1])
+                    Data(0).concat(Data(0))
                 )
 
 
                 for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
                     signals[arch.regs[init_unroll].id] = self.regs_init_unroll(Data(0), 0)
+
+                # for init_unroll in ast_tools.macros.unroll(range(len(arch.counters))):
+                #     signals[arch.counters[init_unroll].id] = self.counter_init_unroll(Inst.counter_en[init_unroll], Inst.counter_rst[init_unroll], clk_en)
+
 
                 mux_idx_in0 = 0
                 mux_idx_in1 = 0
@@ -226,7 +234,7 @@ def arch_closure(arch):
                 else:
                     return DataOutputList(*outputs), res_p, read_config_data
 
-            # print(inspect.getsource(__init__)) 
-            # print(inspect.getsource(__call__)) 
+            print(inspect.getsource(__init__)) 
+            print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

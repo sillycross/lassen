@@ -74,9 +74,11 @@ alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
 mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
 reg_en_list = [Bit(1) for _ in range(arch.num_reg)]
 mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
-mux_list_in1 = [6 for _ in range(arch.num_mux_in1)]
-mux_list_reg = [1 for _ in range(arch.num_reg_mux)]
-mux_list_out = [2 for _ in range(arch.num_output_mux)]
+mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
+mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
+mux_list_out = [0 for _ in range(arch.num_output_mux)]
+counter_en_list = [Bit(1) for _ in range(arch.num_counter)]
+counter_rst_list = [Bit(0) for _ in range(arch.num_counter)]
 
 mux_list_inst_in0 = []
 mux_list_inst_in1 = []
@@ -109,7 +111,7 @@ for i in range(arch.num_outputs):
 Cond_t = Inst.cond
 Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z,
+inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, counter_en_list, counter_rst_list, Signed_t.unsigned, 0, Cond_t.Z,
             [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
             Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
 

@@ -32,6 +32,8 @@ def inst_arch_closure(arch):
             mux_list_type_in1 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
             mux_list_type_reg = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
             mux_list_type_output = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.outputs[i]))] for i in range(arch.num_outputs) if len(arch.outputs[i]) > 1)]
+            counter_en_list_type = m.Tuple[(Bit for _ in range(arch.num_counter))]
+            counter_rst_list_type = m.Tuple[(Bit for _ in range(arch.num_counter))]
             Mode_t_list_type = m.Tuple[(Mode_t for _ in range(arch.num_inputs))]
             Data_list_type = m.Tuple[(Data for _ in range(arch.num_inputs))]
         else:
@@ -44,10 +46,10 @@ def inst_arch_closure(arch):
             mux_list_type_in1 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
             mux_list_type_reg = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
             mux_list_type_output = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.outputs[i]))] for i in range(arch.num_outputs) if len(arch.outputs[i]) > 1)]
+            counter_en_list_type = Tuple[(Bit for _ in range(arch.num_counter))]
+            counter_rst_list_type = Tuple[(Bit for _ in range(arch.num_counter))]
             Mode_t_list_type = Tuple[(Mode_t for _ in range(arch.num_inputs))]
             Data_list_type = Tuple[(Data for _ in range(arch.num_inputs))]
-
-
 
 
         class Inst(Product_fc(family)):
@@ -72,6 +74,10 @@ def inst_arch_closure(arch):
 
             if arch.num_output_mux > 0:
                 mux_out = mux_list_type_output
+
+            if arch.num_counter > 0:
+                counter_en = counter_en_list_type
+                counter_rst = counter_rst_list_type
 
             signed= Signed_t     # unsigned or signed
             lut= LUT_t          # LUT operation as a 3-bit LUT

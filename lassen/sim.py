@@ -138,10 +138,7 @@ def arch_closure(arch):
 
 
                 #Calculate read_config_data
-                read_config_data = bit012_addr.ite(
-                    BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0)),
-                    Data(0).concat(Data(0))
-                )
+                read_config_data = BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0))
 
 
                 for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):

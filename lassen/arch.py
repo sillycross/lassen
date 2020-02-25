@@ -245,5 +245,5 @@ def graph_arch(arch: Arch):
 
     graph.subgraph(outputs_subgraph)
 
-    print(graph.source)
+    # print(graph.source)
     graph.render("arch_graph", view=False)

@@ -120,7 +120,7 @@ def read_arch(json_file_str):
         num_inputs = len(unique_inputs)
         num_outputs = len(json_in['outputs'])
 
-        print(unique_inputs)
+        #print(unique_inputs)
 
         for module_ in modules:
             if not isinstance(module_.in0, list):

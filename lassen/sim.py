@@ -231,7 +231,7 @@ def arch_closure(arch):
                 else:
                     return DataOutputList(*outputs), res_p, read_config_data
 
-            print(inspect.getsource(__init__)) 
-            print(inspect.getsource(__call__)) 
+            #print(inspect.getsource(__init__)) 
+            #print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

@@ -90,7 +90,7 @@ def read_arch(json_file_str):
                     num_alu += 1
                 elif new_module.type_ == "mul":
                     num_mul += 1
-                else:
+                elif not new_module.type_ == "add":
                     raise ValueError('Unrecognized module type in specification')
 
                 if not isinstance(new_module.in0, list):
@@ -172,6 +172,9 @@ def graph_arch(arch: Arch):
         if module.type_ == "alu":
             pe_subgraph.attr('node', shape='box')
             pe_subgraph.node(str(module.id), "alu")
+        if module.type_ == "add":
+            pe_subgraph.attr('node', shape='box')
+            pe_subgraph.node(str(module.id), "add")
         elif module.type_ == "mul":
             pe_subgraph.attr('node', shape='box')
             pe_subgraph.node(str(module.id), "mul")

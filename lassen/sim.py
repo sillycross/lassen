@@ -10,6 +10,7 @@ from .common import *
 from .mode import gen_register_mode
 from .lut import LUT_fc
 from .alu import ALU_fc
+from .add import ADD_fc
 from .cond import Cond_fc
 from .isa import inst_arch_closure
 from .arch import *
@@ -35,6 +36,7 @@ def arch_closure(arch):
         BitReg = gen_register_mode(Bit, 0)(family)
         Counter = Counter_fc(family)
         ALU = ALU_fc(family)
+        ADD = ADD_fc(family)
         Cond = Cond_fc(family)
         LUT = LUT_fc(family)
         MUL = MUL_fc(family)
@@ -152,6 +154,7 @@ def arch_closure(arch):
                 mux_idx_in1 = 0
                 mul_idx = 0
                 alu_idx = 0
+
                 for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
 
                     if inline(len(arch.modules[mod_index].in0) == 1):
@@ -179,6 +182,9 @@ def arch_closure(arch):
                     elif inline(arch.modules[mod_index].type_ == "alu"):
                         signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[alu_idx], inst.signed, in0, in1, rd)
                         alu_idx = alu_idx + 1
+
+                    elif inline(arch.modules[mod_index].type_ == "add"):
+                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ADD(in0, in1)
                             
 
                 reg_mux_idx = 0

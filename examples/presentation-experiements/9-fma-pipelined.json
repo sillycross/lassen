@@ -106,25 +106,25 @@
       "in": 28
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "20_reg",
       "in1": "21_reg",
       "id": 30
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "22_reg",
       "in1": "23_reg",
       "id": 31
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "24_reg",
       "in1": "25_reg",
       "id": 32
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "26_reg",
       "in1": "27_reg",
       "id": 33
@@ -150,13 +150,13 @@
       "id": "33_reg"
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "30_reg",
       "in1": "31_reg",
       "id": 40
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "32_reg",
       "in1": "33_reg",
       "id": 41
@@ -172,7 +172,7 @@
       "in": 41
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "40_reg",
       "in1": "41_reg",
       "id": 50
@@ -183,7 +183,7 @@
       "in": 50
     },
     {
-      "type": "alu",
+      "type": "add",
       "in0": "50_reg",
       "in1": "28_reg",
       "id": 60

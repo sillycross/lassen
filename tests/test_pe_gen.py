@@ -72,7 +72,6 @@ def copy_file(src_filename, dst_filename, override=False):
 num_sim_cycles = 10
 alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
 mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
-reg_en_list = [Bit(1) for _ in range(arch.num_reg)]
 mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
 mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
 mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
@@ -107,7 +106,7 @@ for i in range(arch.num_outputs):
         mux_out_idx += 1
 
 
-inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z)
+inst_gen = gen_inst(alu_list, mul_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z)
 
 inputs = [random.randint(0, 2**7) for _ in range(num_inputs)]
 inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]

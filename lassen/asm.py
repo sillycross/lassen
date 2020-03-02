@@ -16,9 +16,6 @@ def asm_arch_closure(arch):
 
     if arch.num_mul > 0:
         MUL_t_list_type = Inst.mul
-
-    if arch.num_reg > 0:
-        REG_t_list_type = Inst.reg_en
     
     if arch.num_mux_in0 > 0:
         mux_list_type_in0 = Inst.mux_in0
@@ -33,7 +30,7 @@ def asm_arch_closure(arch):
 
 
 
-    def gen_inst(alu, mul, reg_en, mux_in0, mux_in1, mux_reg, mux_out, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z):
+    def gen_inst(alu, mul, mux_in0, mux_in1, mux_reg, mux_out, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z):
         """
         https://github.com/StanfordAHA/CGRAGenerator/wiki/PE-Spec
         Format a configuration of the PE - sets all fields
@@ -46,9 +43,6 @@ def asm_arch_closure(arch):
 
         if arch.num_mul > 0:
             args.append(MUL_t_list_type(*mul) )
-
-        if arch.num_reg > 0:
-            args.append(REG_t_list_type(*reg_en) )
 
         if arch.num_mux_in0 > 0:
             args.append(mux_list_type_in0(*mux_in0) )

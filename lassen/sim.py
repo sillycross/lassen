@@ -49,12 +49,22 @@ def arch_closure(arch):
             DataInputList = m.Tuple[(Data for _ in range(arch.num_inputs))]
             DataOutputList = m.Tuple[(Out_Data for _ in range(arch.num_outputs))]
             ConfigDataList = m.Tuple[(Data for _ in range(arch.num_const_reg))]
+            RegEnList = m.Tuple[(Bit for _ in range(arch.num_reg))]
         else:
             DataInputList = hwtypes.Tuple[(Data for _ in range(arch.num_inputs))]
             DataOutputList = hwtypes.Tuple[(Out_Data for _ in range(arch.num_outputs))]
             ConfigDataList = hwtypes.Tuple[(Data for _ in range(arch.num_const_reg))]
+            RegEnList = hwtypes.Tuple[(Bit for _ in range(arch.num_reg))]
 
-        
+        RegEnListDefault = [Bit(1) for _ in range(arch.num_reg)]
+
+        if arch.num_reg == 0:
+            if family.Bit is m.Bit:
+                RegEnList = m.Tuple[(Bit for _ in range(1))]
+            else:
+                RegEnList = hwtypes.Tuple[(Bit for _ in range(1))]
+            RegEnListDefault = [Bit(1) for _ in range(1)]
+
         Config_defualt_list = [Data(0) for _ in range(arch.num_const_reg)]
         if (arch.num_const_reg > 0):
             Config_default = Config(family.BitVector[3](0), ConfigDataList(*Config_defualt_list))
@@ -71,26 +81,26 @@ def arch_closure(arch):
 
                 # Data registers
                 if inline(arch.enable_input_regs):
-                    for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        self.input_reg_init_unroll: Register = Register()
+                    for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_inputs)):
+                        self.input_reg_symbol_interpolate: Register = Register()
 
                 if inline(arch.enable_output_regs):
-                    for init_unroll in ast_tools.macros.unroll(range(arch.num_outputs)):
-                        self.output_reg_init_unroll: Register = Register()
+                    for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_outputs)):
+                        self.output_reg_symbol_interpolate: Register = Register()
 
-                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
-                    self.regs_init_unroll: Register = Register()
+                for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_reg)):
+                    self.regs_symbol_interpolate: Register = Register()
 
-                for init_unroll in ast_tools.macros.unroll(range(arch.num_const_reg)):
-                    self.const_reg_init_unroll: ConstRegister = ConstRegister()
+                for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_const_reg)):
+                    self.const_reg_symbol_interpolate: ConstRegister = ConstRegister()
 
-                for init_unroll in ast_tools.macros.unroll(range(len(arch.modules))):
-                    if inline(arch.modules[init_unroll].type_ == 'alu'):
-                        self.modules_init_unroll: type(ALU_bw(arch.input_width)) = ALU_bw(arch.modules[init_unroll].in_width)()
-                    if inline(arch.modules[init_unroll].type_ == 'mul'):
-                        self.modules_init_unroll: type(MUL_bw(arch.modules[init_unroll].in_width, arch.modules[init_unroll].out_width)) = MUL_bw(arch.modules[init_unroll].in_width, arch.modules[init_unroll].out_width)()
-                    if inline(arch.modules[init_unroll].type_ == 'add'):
-                        self.modules_init_unroll: ADD = ADD()
+                for symbol_interpolate in ast_tools.macros.unroll(range(len(arch.modules))):
+                    if inline(arch.modules[symbol_interpolate].type_ == 'alu'):
+                        self.modules_symbol_interpolate: type(ALU_bw(arch.input_width)) = ALU_bw(arch.modules[symbol_interpolate].in_width)()
+                    if inline(arch.modules[symbol_interpolate].type_ == 'mul'):
+                        self.modules_symbol_interpolate: type(MUL_bw(arch.modules[symbol_interpolate].in_width, arch.modules[symbol_interpolate].out_width)) = MUL_bw(arch.modules[symbol_interpolate].in_width, arch.modules[symbol_interpolate].out_width)()
+                    if inline(arch.modules[symbol_interpolate].type_ == 'add'):
+                        self.modules_symbol_interpolate: ADD = ADD()
                 # Bit Registers
                 self.regd: BitReg = BitReg()
                 self.rege: BitReg = BitReg()
@@ -110,6 +120,7 @@ def arch_closure(arch):
             @name_outputs(PE_res=DataOutputList, res_p=UBit, read_config_data=UData32)
             def __call__(self, inst: Inst, \
                 inputs : DataInputList, \
+                reg_enables : RegEnList = RegEnList(*RegEnListDefault), \
                 clk_en: Global(Bit) = Bit(1), \
                 config_addr : Data8 = Data8(0), \
                 config_data : Config = Config_default, \
@@ -141,8 +152,8 @@ def arch_closure(arch):
                 signals = {}
 
                 if inline(arch.enable_input_regs):
-                    for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        signals[arch.inputs[init_unroll]] = self.input_reg_init_unroll(inputs[init_unroll], clk_en)
+                    for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_inputs)):
+                        signals[arch.inputs[symbol_interpolate]] = self.input_reg_symbol_interpolate(inputs[symbol_interpolate], clk_en)
                         
                 else:
                     for i in ast_tools.macros.unroll(range(arch.num_inputs)):
@@ -154,15 +165,15 @@ def arch_closure(arch):
                 rf, rf_rdata = self.regf(rf_config_wdata, rf_we, clk_en)
 
 
-                for init_unroll in ast_tools.macros.unroll(range(arch.num_const_reg)):
-                    signals[arch.const_regs[init_unroll].id], _ = self.const_reg_init_unroll(config_data.config_data[init_unroll], reg_we[init_unroll], clk_en)
+                for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_const_reg)):
+                    signals[arch.const_regs[symbol_interpolate].id], _ = self.const_reg_symbol_interpolate(config_data.config_data[symbol_interpolate], reg_we[symbol_interpolate], clk_en)
 
                 #Calculate read_config_data
                 read_config_data = BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0))
 
 
-                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
-                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(Data(0), 0)
+                for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_reg)):
+                    signals[arch.regs[symbol_interpolate].id] = self.regs_symbol_interpolate(Data(0), 0)
 
    
                 mux_idx_in0 = 0
@@ -170,52 +181,52 @@ def arch_closure(arch):
                 mul_idx = 0
                 alu_idx = 0
 
-                for init_unroll in ast_tools.macros.unroll(range(len(arch.modules))):
+                for symbol_interpolate in ast_tools.macros.unroll(range(len(arch.modules))):
 
-                    if inline(len(arch.modules[init_unroll].in0) == 1):
-                        in0 = signals[arch.modules[init_unroll].in0[0]]  
+                    if inline(len(arch.modules[symbol_interpolate].in0) == 1):
+                        in0 = signals[arch.modules[symbol_interpolate].in0[0]]  
                     else:
                         in0_mux_select = inst.mux_in0[mux_idx_in0]
                         mux_idx_in0 = mux_idx_in0 + 1
-                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[init_unroll].in0))):
-                            if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[init_unroll].in0))](mux_inputs):
-                                in0 = signals[arch.modules[init_unroll].in0[mux_inputs]]
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[symbol_interpolate].in0))):
+                            if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[symbol_interpolate].in0))](mux_inputs):
+                                in0 = signals[arch.modules[symbol_interpolate].in0[mux_inputs]]
                             
-                    if inline(len(arch.modules[init_unroll].in1) == 1):
-                        in1 = signals[arch.modules[init_unroll].in1[0]]  
+                    if inline(len(arch.modules[symbol_interpolate].in1) == 1):
+                        in1 = signals[arch.modules[symbol_interpolate].in1[0]]  
                     else:
                         in1_mux_select = inst.mux_in1[mux_idx_in1]
                         mux_idx_in1 = mux_idx_in1 + 1
-                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[init_unroll].in1))):
-                            if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[init_unroll].in1))](mux_inputs):
-                                in1 = signals[arch.modules[init_unroll].in1[mux_inputs]]
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[symbol_interpolate].in1))):
+                            if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[symbol_interpolate].in1))](mux_inputs):
+                                in1 = signals[arch.modules[symbol_interpolate].in1[mux_inputs]]
 
-                    if inline(arch.modules[init_unroll].type_ == "mul"):
-                        signals[arch.modules[init_unroll].id] = self.modules_init_unroll(inst.mul[mul_idx], inst.signed, in0, in1)
+                    if inline(arch.modules[symbol_interpolate].type_ == "mul"):
+                        signals[arch.modules[symbol_interpolate].id] = self.modules_symbol_interpolate(inst.mul[mul_idx], inst.signed, in0, in1)
                         mul_idx = mul_idx + 1
                         
-                    elif inline(arch.modules[init_unroll].type_ == "alu"):
-                        signals[arch.modules[init_unroll].id], alu_res_p, Z, N, C, V = self.modules_init_unroll(inst.alu[alu_idx], inst.signed, in0, in1, rd)
+                    elif inline(arch.modules[symbol_interpolate].type_ == "alu"):
+                        signals[arch.modules[symbol_interpolate].id], alu_res_p, Z, N, C, V = self.modules_symbol_interpolate(inst.alu[alu_idx], inst.signed, in0, in1, rd)
                         alu_idx = alu_idx + 1
 
-                    elif inline(arch.modules[init_unroll].type_ == "add"):
-                        signals[arch.modules[init_unroll].id], alu_res_p, Z, N, C, V = self.modules_init_unroll(in0, in1)
+                    elif inline(arch.modules[symbol_interpolate].type_ == "add"):
+                        signals[arch.modules[symbol_interpolate].id], alu_res_p, Z, N, C, V = self.modules_symbol_interpolate(in0, in1)
                             
 
                 reg_mux_idx = 0
 
-                for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
-                    if inline(len(arch.regs[init_unroll].in_) == 1):
-                        in_ = signals[arch.regs[init_unroll].in_[0]]  
+                for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_reg)):
+                    if inline(len(arch.regs[symbol_interpolate].in_) == 1):
+                        in_ = signals[arch.regs[symbol_interpolate].in_[0]]  
                     else:
                         in_mux_select = inst.mux_reg[reg_mux_idx]
                         reg_mux_idx = reg_mux_idx + 1
 
-                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.regs[init_unroll].in_))):
-                            if in_mux_select == family.BitVector[m.math.log2_ceil(len(arch.regs[init_unroll].in_))](mux_inputs):
-                                in_ = signals[arch.regs[init_unroll].in_[mux_inputs]]
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.regs[symbol_interpolate].in_))):
+                            if in_mux_select == family.BitVector[m.math.log2_ceil(len(arch.regs[symbol_interpolate].in_))](mux_inputs):
+                                in_ = signals[arch.regs[symbol_interpolate].in_[mux_inputs]]
                             
-                    signals[arch.regs[init_unroll].id] = self.regs_init_unroll(in_, clk_en.ite(inst.reg_en[init_unroll], Bit(0)))
+                    signals[arch.regs[symbol_interpolate].id] = self.regs_symbol_interpolate(in_, clk_en.ite(reg_enables[symbol_interpolate], Bit(0)))
 
                 # calculate lut results
                 lut_res = self.lut(inst.lut, rd, re, rf)
@@ -243,8 +254,8 @@ def arch_closure(arch):
 
                 if inline(arch.enable_output_regs):
                     outputs_from_reg = []
-                    for init_unroll in ast_tools.macros.unroll(range(arch.num_outputs)):
-                        temp = self.output_reg_init_unroll(outputs[init_unroll], clk_en)
+                    for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_outputs)):
+                        temp = self.output_reg_symbol_interpolate(outputs[symbol_interpolate], clk_en)
                         outputs_from_reg.append(temp)
 
                     # return 16-bit result, 1-bit result

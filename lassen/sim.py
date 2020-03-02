@@ -15,7 +15,7 @@ from .cond import Cond_fc
 from .isa import inst_arch_closure
 from .arch import *
 from .mul import MUL_fc
-from .counter import Counter_fc
+from .config import config_arch_closure
 
 def arch_closure(arch):
     @family_closure
@@ -25,33 +25,41 @@ def arch_closure(arch):
         #Hack
         def BV1(bit):
             return bit.ite(family.BitVector[1](1), family.BitVector[1](0))
-        Data = family.BitVector[DATAWIDTH]
+        Data = family.BitVector[arch.input_width]
+        Out_Data = family.BitVector[arch.output_width]
         UBit = family.Unsigned[1]
         Data8 = family.BitVector[8]
         Data32 = family.BitVector[32]
         UData32 = family.Unsigned[32]
         Bit = family.Bit
-        RegisterWithConst = gen_register_mode(Data, 0)(family)
+        ConstRegister = gen_register_mode(Data, 0)(family)
         Register = gen_register(Data, 0)(family)
         BitReg = gen_register_mode(Bit, 0)(family)
-        Counter = Counter_fc(family)
-        ALU = ALU_fc(family)
+        ALU_bw = ALU_fc(family)
         ADD = ADD_fc(family)
         Cond = Cond_fc(family)
         LUT = LUT_fc(family)
-        MUL = MUL_fc(family)
+        MUL_bw = MUL_fc(family)
         Inst_fc = inst_arch_closure(arch)
         Inst = Inst_fc(family)
+        Config_fc = config_arch_closure(arch)
+        Config = Config_fc(family)
 
         if family.Bit is m.Bit:
             DataInputList = m.Tuple[(Data for _ in range(arch.num_inputs))]
-            DataOutputList = m.Tuple[(Data for _ in range(arch.num_outputs))]
+            DataOutputList = m.Tuple[(Out_Data for _ in range(arch.num_outputs))]
+            ConfigDataList = m.Tuple[(Data for _ in range(arch.num_const_reg))]
         else:
             DataInputList = hwtypes.Tuple[(Data for _ in range(arch.num_inputs))]
-            DataOutputList = hwtypes.Tuple[(Data for _ in range(arch.num_outputs))]
+            DataOutputList = hwtypes.Tuple[(Out_Data for _ in range(arch.num_outputs))]
+            ConfigDataList = hwtypes.Tuple[(Data for _ in range(arch.num_const_reg))]
 
-
-
+        
+        Config_defualt_list = [Data(0) for _ in range(arch.num_const_reg)]
+        if (arch.num_const_reg > 0):
+            Config_default = Config(family.BitVector[3](0), ConfigDataList(*Config_defualt_list))
+        else:
+            Config_default = Config(family.BitVector[3](0))
 
         @assemble(family, locals(), globals())
         class PE(Peak):
@@ -73,8 +81,16 @@ def arch_closure(arch):
                 for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
                     self.regs_init_unroll: Register = Register()
 
-                # for init_unroll in ast_tools.macros.unroll(range(len(arch.counters))):
-                #     self.counter_init_unroll: Counter = Counter()
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_const_reg)):
+                    self.const_reg_init_unroll: ConstRegister = ConstRegister()
+
+                for init_unroll in ast_tools.macros.unroll(range(len(arch.modules))):
+                    if inline(arch.modules[init_unroll].type_ == 'alu'):
+                        self.modules_init_unroll: type(ALU_bw(arch.input_width)) = ALU_bw(arch.modules[init_unroll].in_width)()
+                    if inline(arch.modules[init_unroll].type_ == 'mul'):
+                        self.modules_init_unroll: type(MUL_bw(arch.modules[init_unroll].in_width, arch.modules[init_unroll].out_width)) = MUL_bw(arch.modules[init_unroll].in_width, arch.modules[init_unroll].out_width)()
+                    if inline(arch.modules[init_unroll].type_ == 'add'):
+                        self.modules_init_unroll: ADD = ADD()
                 # Bit Registers
                 self.regd: BitReg = BitReg()
                 self.rege: BitReg = BitReg()
@@ -94,36 +110,35 @@ def arch_closure(arch):
             @name_outputs(PE_res=DataOutputList, res_p=UBit, read_config_data=UData32)
             def __call__(self, inst: Inst, \
                 inputs : DataInputList, \
-                bit0: Bit = Bit(0), bit1: Bit = Bit(0), bit2: Bit = Bit(0), \
                 clk_en: Global(Bit) = Bit(1), \
                 config_addr : Data8 = Data8(0), \
-                config_data : Data32 = Data32(0), \
+                config_data : Config = Config_default, \
                 config_en : Bit = Bit(0) \
             ) -> (DataOutputList, Bit, Data32):
                 # Simulate one clock cycle
 
 
-                data01_addr = (config_addr[:3] == BitVector[3](DATA01_ADDR))
                 bit012_addr = (config_addr[:3] == BitVector[3](BIT012_ADDR))
 
                 # input registers
-                reg_we = (data01_addr & config_en)
-                reg_config_wdata = config_data[DATA0_START:DATA0_START+DATA0_WIDTH]
+                reg_we = []
+
+                for i in ast_tools.macros.unroll(range(arch.num_const_reg)):
+                    reg_we.append((config_addr == BitVector[8](i)) & config_en)
 
                 #rd
                 rd_we = (bit012_addr & config_en)
-                rd_config_wdata = config_data[BIT0_START]
+                rd_config_wdata = config_data.config_data_bits[0]
 
                 #re
                 re_we = rd_we
-                re_config_wdata = config_data[BIT1_START]
+                re_config_wdata = config_data.config_data_bits[1]
 
                 #rf
                 rf_we = rd_we
-                rf_config_wdata = config_data[BIT2_START]
+                rf_config_wdata = config_data.config_data_bits[2]
 
                 signals = {}
-                rdata = {}
 
                 if inline(arch.enable_input_regs):
                     for init_unroll in ast_tools.macros.unroll(range(arch.num_inputs)):
@@ -134,10 +149,13 @@ def arch_closure(arch):
                         signals[arch.inputs[i]] = inputs[i]
                         
 
-                rd, rd_rdata = self.regd(inst.regd, inst.bit0, bit0, clk_en, rd_we, rd_config_wdata)
-                re, re_rdata = self.rege(inst.rege, inst.bit1, bit1, clk_en, re_we, re_config_wdata)
-                rf, rf_rdata = self.regf(inst.regf, inst.bit2, bit2, clk_en, rf_we, rf_config_wdata)
+                rd, rd_rdata = self.regd(rd_config_wdata, rd_we, clk_en)
+                re, re_rdata = self.rege(re_config_wdata, re_we, clk_en)
+                rf, rf_rdata = self.regf(rf_config_wdata, rf_we, clk_en)
 
+
+                for init_unroll in ast_tools.macros.unroll(range(arch.num_const_reg)):
+                    signals[arch.const_regs[init_unroll].id], _ = self.const_reg_init_unroll(config_data.config_data[init_unroll], reg_we[init_unroll], clk_en)
 
                 #Calculate read_config_data
                 read_config_data = BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0))
@@ -146,45 +164,42 @@ def arch_closure(arch):
                 for init_unroll in ast_tools.macros.unroll(range(arch.num_reg)):
                     signals[arch.regs[init_unroll].id] = self.regs_init_unroll(Data(0), 0)
 
-                # for init_unroll in ast_tools.macros.unroll(range(len(arch.counters))):
-                #     signals[arch.counters[init_unroll].id] = self.counter_init_unroll(Inst.counter_en[init_unroll], Inst.counter_rst[init_unroll], clk_en)
-
-
+   
                 mux_idx_in0 = 0
                 mux_idx_in1 = 0
                 mul_idx = 0
                 alu_idx = 0
 
-                for mod_index in ast_tools.macros.unroll(range(len(arch.modules))):
+                for init_unroll in ast_tools.macros.unroll(range(len(arch.modules))):
 
-                    if inline(len(arch.modules[mod_index].in0) == 1):
-                        in0 = signals[arch.modules[mod_index].in0[0]]  
+                    if inline(len(arch.modules[init_unroll].in0) == 1):
+                        in0 = signals[arch.modules[init_unroll].in0[0]]  
                     else:
                         in0_mux_select = inst.mux_in0[mux_idx_in0]
                         mux_idx_in0 = mux_idx_in0 + 1
-                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in0))):
-                            if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in0))](mux_inputs):
-                                in0 = signals[arch.modules[mod_index].in0[mux_inputs]]
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[init_unroll].in0))):
+                            if in0_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[init_unroll].in0))](mux_inputs):
+                                in0 = signals[arch.modules[init_unroll].in0[mux_inputs]]
                             
-                    if inline(len(arch.modules[mod_index].in1) == 1):
-                        in1 = signals[arch.modules[mod_index].in1[0]]  
+                    if inline(len(arch.modules[init_unroll].in1) == 1):
+                        in1 = signals[arch.modules[init_unroll].in1[0]]  
                     else:
                         in1_mux_select = inst.mux_in1[mux_idx_in1]
                         mux_idx_in1 = mux_idx_in1 + 1
-                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[mod_index].in1))):
-                            if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[mod_index].in1))](mux_inputs):
-                                in1 = signals[arch.modules[mod_index].in1[mux_inputs]]
+                        for mux_inputs in ast_tools.macros.unroll(range(len(arch.modules[init_unroll].in1))):
+                            if in1_mux_select == family.BitVector[m.math.log2_ceil(len(arch.modules[init_unroll].in1))](mux_inputs):
+                                in1 = signals[arch.modules[init_unroll].in1[mux_inputs]]
 
-                    if inline(arch.modules[mod_index].type_ == "mul"):
-                        signals[arch.modules[mod_index].id] = MUL(inst.mul[mul_idx], inst.signed, in0, in1)
+                    if inline(arch.modules[init_unroll].type_ == "mul"):
+                        signals[arch.modules[init_unroll].id] = self.modules_init_unroll(inst.mul[mul_idx], inst.signed, in0, in1)
                         mul_idx = mul_idx + 1
                         
-                    elif inline(arch.modules[mod_index].type_ == "alu"):
-                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ALU(inst.alu[alu_idx], inst.signed, in0, in1, rd)
+                    elif inline(arch.modules[init_unroll].type_ == "alu"):
+                        signals[arch.modules[init_unroll].id], alu_res_p, Z, N, C, V = self.modules_init_unroll(inst.alu[alu_idx], inst.signed, in0, in1, rd)
                         alu_idx = alu_idx + 1
 
-                    elif inline(arch.modules[mod_index].type_ == "add"):
-                        signals[arch.modules[mod_index].id], alu_res_p, Z, N, C, V = ADD(in0, in1)
+                    elif inline(arch.modules[init_unroll].type_ == "add"):
+                        signals[arch.modules[init_unroll].id], alu_res_p, Z, N, C, V = self.modules_init_unroll(in0, in1)
                             
 
                 reg_mux_idx = 0
@@ -237,7 +252,7 @@ def arch_closure(arch):
                 else:
                     return DataOutputList(*outputs), res_p, read_config_data
 
-            #print(inspect.getsource(__init__)) 
-            #print(inspect.getsource(__call__)) 
+            print(inspect.getsource(__init__)) 
+            print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

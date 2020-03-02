@@ -1,4 +1,4 @@
-from peak import Peak, name_outputs, family_closure
+from peak import Peak, name_outputs, family_closure, assemble
 from .common import DATAWIDTH
 import magma
 
@@ -17,21 +17,21 @@ def ADD_fc(family):
     UInt = family.Unsigned
     UData = UInt[DATAWIDTH]
 
-    # @assemble(family, locals(), globals())
-    # class ALU(Peak):
-        #@name_outputs(res=Data, res_p=Bit, Z=Bit, N=Bit, C=Bit, V=Bit)
-    def ADD(a: Data, b: Data) -> (Data, Bit, Bit, Bit, Bit, Bit):
+    @assemble(family, locals(), globals())
+    class ADD(Peak):
+        @name_outputs(res=Data, res_p=Bit, Z=Bit, N=Bit, C=Bit, V=Bit)
+        def __call__(self, a: Data, b: Data) -> (Data, Bit, Bit, Bit, Bit, Bit):
 
 
-        res, C = UData(a).adc(UData(b), Bit(0))
-        V = overflow(a, b, res)
-        res_p = C
-        N = Bit(res[-1])
-        Z = (res == 0)
+            res, C = UData(a).adc(UData(b), Bit(0))
+            V = overflow(a, b, res)
+            res_p = C
+            N = Bit(res[-1])
+            Z = (res == 0)
 
-        return res, res_p, Z, N, C, V
+            return res, res_p, Z, N, C, V
 
-    if family.Bit is magma.Bit:
-        return magma.circuit.combinational(ADD)
+    # if family.Bit is magma.Bit:
+    #     return magma.circuit.combinational(ADD)
 
     return ADD

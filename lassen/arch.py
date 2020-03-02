@@ -1,42 +1,47 @@
 import json
 
 class Arch():
-    def __init__(self, width, num_inputs, num_outputs, num_alu, num_mul, num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, num_counter, inputs, outputs, enable_input_regs, enable_output_regs):
-        self.width = width
+    def __init__(self, input_width, output_width, num_inputs, num_outputs, num_alu, num_mul, num_reg, num_const_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, inputs, outputs, enable_input_regs, enable_output_regs):
+        self.input_width = input_width
+        self.output_width = output_width
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.num_alu = num_alu
         self.num_mul = num_mul
         self.num_reg = num_reg
+        self.num_const_reg = num_const_reg
         self.num_mux_in0 = num_mux_in0
         self.num_mux_in1 = num_mux_in1
         self.num_reg_mux = num_reg_mux
         self.num_output_mux = num_output_mux
-        self.num_counter = num_counter
         self.inputs = inputs
         self.outputs = outputs
         self.modules = []
         self.regs = []
-        self.counters = []
+        self.const_regs = []
         self.enable_input_regs = enable_input_regs
         self.enable_output_regs = enable_output_regs
 			
 class module():
-    def __init__(self, id, type_, in0, in1):
+    def __init__(self, id, type_, in0, in1, in_width, out_width):
         self.id = id
         self.type_ = type_
         self.in0 = in0
         self.in1 = in1
+        self.in_width = in_width
+        self.out_width = out_width
 
 class reg():
-    def __init__(self, id, in_):
+    def __init__(self, id, in_, width):
         self.id = id
         self.in_ = in_
+        self.width = width
 
-class counter():
+class const_reg():
     def __init__(self, id, width):
         self.id = id
         self.width = width
+
 
 def read_arch(json_file_str):
     # with open('examples/test_json.json') as json_file:
@@ -46,21 +51,22 @@ def read_arch(json_file_str):
         num_alu = 0
         num_mul = 0
         num_reg = 0
-        num_counter = 0
+        num_const_reg = 0
         num_mux_in0 = 0
         num_mux_in1 = 0
         num_reg_mux = 0
         modules_json = json_in['modules']
         modules = []
+        const_regs = []
         regs = []
-        counters = []
         inputs = []
         ids = []
+        width = json_in.get('input_width', 16)
 
         for module_json in modules_json:
             if module_json['type'] == "reg":
                 num_reg += 1
-                new_reg = reg(module_json['id'], module_json['in'])
+                new_reg = reg(module_json['id'], module_json['in'], module_json.get('width', width))
                 
                 if not isinstance(new_reg.in_, list):
                     new_reg.in_ = [new_reg.in_]
@@ -80,11 +86,13 @@ def read_arch(json_file_str):
                     ids.append(new_reg.id)
 
                 regs.append(new_reg)
-            elif module_json['type'] == "counter":
-                num_counter += 1
-                counters.append(counter(module_json['id'], module_json['width']))
+            elif module_json['type'] == "const_reg":
+                num_const_reg += 1
+                new_const_reg = const_reg(module_json['id'], module_json.get('width', width))
+                const_regs.append(new_const_reg)
+            
             else:
-                new_module = module( module_json['id'], module_json['type'], module_json['in0'], module_json.get('in1'))
+                new_module = module( module_json['id'], module_json['type'], module_json['in0'], module_json.get('in1'), module_json.get('in_width', width), module_json.get('out_width', width))
                 
                 if new_module.type_ == "alu":
                     num_alu += 1
@@ -141,12 +149,12 @@ def read_arch(json_file_str):
             outputs.append(out_new)
 
 
-        arch = Arch(json_in.get('width', 16), num_inputs, num_outputs, num_alu, num_mul, 
-                    num_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, num_counter, unique_inputs, outputs, 
+        arch = Arch(width, json_in.get('output_width', width), num_inputs, num_outputs, num_alu, num_mul, 
+                    num_reg, num_const_reg, num_mux_in0, num_mux_in1, num_reg_mux, num_output_mux, unique_inputs, outputs, 
                     json_in.get('enable_input_regs', False), json_in.get('enable_output_regs', False))
         arch.modules = modules
         arch.regs = regs
-        arch.counters = counters
+        arch.const_regs = const_regs
         return arch
 
 

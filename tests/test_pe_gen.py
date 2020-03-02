@@ -4,7 +4,6 @@ import shutil
 from peak.assembler import Assembler
 from peak import wrap_with_disassembler
 from lassen import arch_closure, inst_arch_closure
-from lassen.common import DATAWIDTH, BFloat16_fc
 from lassen.arch import read_arch
 from lassen.asm import asm_arch_closure
 from lassen.alu import ALU_t_fc
@@ -21,7 +20,7 @@ class HashableDict(dict):
 # with open('examples/conv_3_3_balanced.json') as json_file:
 arch = read_arch(str(sys.argv[1]))
 # import pdb; pdb.set_trace()
-width = arch.width
+width = arch.input_width
 num_inputs = arch.num_inputs
 num_outputs = arch.num_outputs
 num_alu = arch.num_alu
@@ -29,13 +28,14 @@ Inst_fc = inst_arch_closure(arch)
 Inst = Inst_fc(Bit.get_family())
 ALU_t, Signed_t = ALU_t_fc(Bit.get_family())
 MUL_t, Signed_t = MUL_t_fc(Bit.get_family())
+Cond_t = Inst.cond
 gen_inst = asm_arch_closure(arch)
 
 PE_fc = arch_closure(arch)
 PE_bv = PE_fc(Bit.get_family())
 
-BFloat16 = BFloat16_fc(Bit.get_family())
-Data = BitVector[DATAWIDTH]
+
+Data = BitVector[width]
 
 # create these variables in global space so that we can reuse them easily
 inst_name = 'inst'
@@ -69,7 +69,7 @@ def copy_file(src_filename, dst_filename, override=False):
 
 
 # Define instruction here
-num_sim_cycles = 8
+num_sim_cycles = 10
 alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
 mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
 reg_en_list = [Bit(1) for _ in range(arch.num_reg)]
@@ -77,8 +77,6 @@ mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
 mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
 mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
 mux_list_out = [0 for _ in range(arch.num_output_mux)]
-counter_en_list = [Bit(1) for _ in range(arch.num_counter)]
-counter_rst_list = [Bit(0) for _ in range(arch.num_counter)]
 
 mux_list_inst_in0 = []
 mux_list_inst_in1 = []
@@ -108,14 +106,10 @@ for i in range(arch.num_outputs):
         mux_list_inst_out.append(BitVector[magma.math.log2_ceil(len(arch.outputs[i]))](mux_list_out[mux_out_idx]))
         mux_out_idx += 1
 
-Cond_t = Inst.cond
-Mode_t = Inst.regd
 
-inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, counter_en_list, counter_rst_list, Signed_t.unsigned, 0, Cond_t.Z,
-            [Mode_t.DELAY for _ in range(arch.num_inputs)], [Data(0) for _ in range(arch.num_inputs)],  
-            Mode_t.BYPASS, 0, Mode_t.BYPASS, 0, Mode_t.BYPASS, 0)
+inst_gen = gen_inst(alu_list, mul_list, reg_en_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z)
 
-inputs = [random.randint(0, 2**4) for _ in range(num_inputs)]
+inputs = [random.randint(0, 2**7) for _ in range(num_inputs)]
 inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
 print(inputs)
 
@@ -158,6 +152,8 @@ for cyc in range(num_sim_cycles):
         if (arch.modules[mod].type_ == "mul"):
             signals[arch.modules[mod].id] = in0 * in1
         elif (arch.modules[mod].type_ == "alu"):
+            signals[arch.modules[mod].id] = in0 + in1
+        elif (arch.modules[mod].type_ == "add"):
             signals[arch.modules[mod].id] = in0 + in1
 
     signals_new = signals.copy()

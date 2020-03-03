@@ -8,7 +8,8 @@ from lassen.arch import read_arch
 from lassen.asm import asm_arch_closure
 from lassen.alu import ALU_t_fc
 from lassen.mul import MUL_t_fc
-from hwtypes import Bit, BitVector
+from lassen.enables import enables_arch_closure
+from hwtypes import Bit, BitVector, Tuple
 import os
 import sys
 import random
@@ -76,6 +77,16 @@ mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
 mux_list_in1 = [0 for _ in range(arch.num_mux_in1)]
 mux_list_reg = [0 for _ in range(arch.num_reg_mux)]
 mux_list_out = [0 for _ in range(arch.num_output_mux)]
+
+Enables_fc = enables_arch_closure(arch)
+Enables = Enables_fc(magma.get_family())
+RegEnList = Tuple[(Bit for _ in range(arch.num_reg))]
+
+if arch.num_reg > 0:
+    RegEnListDefault_temp = [Bit(1) for _ in range(arch.num_reg)]
+    RegEnListDefault = Enables(Bit(1), RegEnList(*RegEnListDefault_temp))
+else:
+    RegEnListDefault = Enables(Bit(1))
 
 mux_list_inst_in0 = []
 mux_list_inst_in1 = []
@@ -215,8 +226,9 @@ def test_rtl():
     # import pdb; pdb.set_trace()
     tester.circuit.inst = assembler(inst_gen)
     tester.circuit.CLK = 0
-    tester.circuit.clk_en = 1
+    tester.circuit.enables = RegEnListDefault
 
+    # import pdb; pdb.set_trace()
     tester.circuit.inputs = inputs_to_PE
     tester.eval()
 
@@ -233,7 +245,7 @@ def test_rtl():
     
         
 
-    if CAD_ENV:
+    if False:
         # use ncsim
         libs = ["DW_fp_mult.v", "DW_fp_add.v", "DW_fp_addsub.v"]
         for filename in libs:
@@ -254,7 +266,7 @@ def test_rtl():
         tester.compile_and_run(target="verilator",
                                directory=test_dir,
                                flags=['-Wno-UNUSED', '-Wno-PINNOCONNECT'],
-                               skip_compile=True,
+                               skip_compile=False,
                                skip_verilator=False)
 test_func()
 test_rtl()

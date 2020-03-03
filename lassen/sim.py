@@ -16,6 +16,7 @@ from .isa import inst_arch_closure
 from .arch import *
 from .mul import MUL_fc
 from .config import config_arch_closure
+from .enables import enables_arch_closure
 
 def arch_closure(arch):
     @family_closure
@@ -44,6 +45,8 @@ def arch_closure(arch):
         Inst = Inst_fc(family)
         Config_fc = config_arch_closure(arch)
         Config = Config_fc(family)
+        Enables_fc = enables_arch_closure(arch)
+        Enables = Enables_fc(family)
 
         if family.Bit is m.Bit:
             DataInputList = m.Tuple[(Data for _ in range(arch.num_inputs))]
@@ -56,18 +59,16 @@ def arch_closure(arch):
             ConfigDataList = hwtypes.Tuple[(Data for _ in range(arch.num_const_reg))]
             RegEnList = hwtypes.Tuple[(Bit for _ in range(arch.num_reg))]
 
-        RegEnListDefault = [Bit(1) for _ in range(arch.num_reg)]
+        if arch.num_reg > 0:
+            RegEnListDefault_temp = [Bit(1) for _ in range(arch.num_reg)]
+            RegEnListDefault = Enables(Bit(1), RegEnList(*RegEnListDefault_temp))
+        else:
+            RegEnListDefault = Enables(Bit(1))
 
-        if arch.num_reg == 0:
-            if family.Bit is m.Bit:
-                RegEnList = m.Tuple[(Bit for _ in range(1))]
-            else:
-                RegEnList = hwtypes.Tuple[(Bit for _ in range(1))]
-            RegEnListDefault = [Bit(1) for _ in range(1)]
 
-        Config_defualt_list = [Data(0) for _ in range(arch.num_const_reg)]
+        Config_default_list = [Data(0) for _ in range(arch.num_const_reg)]
         if (arch.num_const_reg > 0):
-            Config_default = Config(family.BitVector[3](0), ConfigDataList(*Config_defualt_list))
+            Config_default = Config(family.BitVector[3](0), ConfigDataList(*Config_default_list))
         else:
             Config_default = Config(family.BitVector[3](0))
 
@@ -120,8 +121,7 @@ def arch_closure(arch):
             @name_outputs(PE_res=DataOutputList, res_p=UBit, read_config_data=UData32)
             def __call__(self, inst: Inst, \
                 inputs : DataInputList, \
-                reg_enables : RegEnList = RegEnList(*RegEnListDefault), \
-                clk_en: Global(Bit) = Bit(1), \
+                enables : Enables = RegEnListDefault, \
                 config_addr : Data8 = Data8(0), \
                 config_data : Config = Config_default, \
                 config_en : Bit = Bit(0) \
@@ -153,20 +153,20 @@ def arch_closure(arch):
 
                 if inline(arch.enable_input_regs):
                     for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_inputs)):
-                        signals[arch.inputs[symbol_interpolate]] = self.input_reg_symbol_interpolate(inputs[symbol_interpolate], clk_en)
+                        signals[arch.inputs[symbol_interpolate]] = self.input_reg_symbol_interpolate(inputs[symbol_interpolate], enables.clk_en)
                         
                 else:
                     for i in ast_tools.macros.unroll(range(arch.num_inputs)):
                         signals[arch.inputs[i]] = inputs[i]
                         
 
-                rd, rd_rdata = self.regd(rd_config_wdata, rd_we, clk_en)
-                re, re_rdata = self.rege(re_config_wdata, re_we, clk_en)
-                rf, rf_rdata = self.regf(rf_config_wdata, rf_we, clk_en)
+                rd, rd_rdata = self.regd(rd_config_wdata, rd_we, enables.clk_en)
+                re, re_rdata = self.rege(re_config_wdata, re_we, enables.clk_en)
+                rf, rf_rdata = self.regf(rf_config_wdata, rf_we, enables.clk_en)
 
 
                 for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_const_reg)):
-                    signals[arch.const_regs[symbol_interpolate].id], _ = self.const_reg_symbol_interpolate(config_data.config_data[symbol_interpolate], reg_we[symbol_interpolate], clk_en)
+                    signals[arch.const_regs[symbol_interpolate].id], _ = self.const_reg_symbol_interpolate(config_data.config_data[symbol_interpolate], reg_we[symbol_interpolate], enables.clk_en)
 
                 #Calculate read_config_data
                 read_config_data = BV1(rd_rdata).concat(BV1(re_rdata)).concat(BV1(rf_rdata)).concat(BitVector[32-3](0))
@@ -226,7 +226,7 @@ def arch_closure(arch):
                             if in_mux_select == family.BitVector[m.math.log2_ceil(len(arch.regs[symbol_interpolate].in_))](mux_inputs):
                                 in_ = signals[arch.regs[symbol_interpolate].in_[mux_inputs]]
                             
-                    signals[arch.regs[symbol_interpolate].id] = self.regs_symbol_interpolate(in_, clk_en.ite(reg_enables[symbol_interpolate], Bit(0)))
+                    signals[arch.regs[symbol_interpolate].id] = self.regs_symbol_interpolate(in_, enables.clk_en.ite(enables.reg_enables[symbol_interpolate], Bit(0)))
 
                 # calculate lut results
                 lut_res = self.lut(inst.lut, rd, re, rf)
@@ -255,7 +255,7 @@ def arch_closure(arch):
                 if inline(arch.enable_output_regs):
                     outputs_from_reg = []
                     for symbol_interpolate in ast_tools.macros.unroll(range(arch.num_outputs)):
-                        temp = self.output_reg_symbol_interpolate(outputs[symbol_interpolate], clk_en)
+                        temp = self.output_reg_symbol_interpolate(outputs[symbol_interpolate], enables.clk_en)
                         outputs_from_reg.append(temp)
 
                     # return 16-bit result, 1-bit result

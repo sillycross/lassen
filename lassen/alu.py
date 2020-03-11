@@ -107,21 +107,23 @@ def ALU_fc(family):
         class ALU(Peak):
             @name_outputs(res=Data, res_p=Bit, Z=Bit, N=Bit, C=Bit, V=Bit)
             def __call__(self, alu: ALU_t, signed_: Signed_t, a: Data, b: Data, d:Bit) -> (Data, Bit, Bit, Bit, Bit, Bit):
-                if signed_ == Signed_t.signed:
+                
+
+                if Bit(signed_ == Signed_t.signed):
                     a_s = SData(a)
                     b_s = SData(b)
                     
                     gte_pred = a_s >= b_s
                     lte_pred = a_s <= b_s
-                    abs_pred = a_s >= 0
+                    abs_pred = a_s >= SData(0)
                     shr = Data(a_s >> b_s)
-                else: #signed_ == Signed_t.unsigned:
+                else: #if signed_ == Signed_t.unsigned:
                     a_u = UData(a)
                     b_u = UData(b)
                     
                     gte_pred = a_u >= b_u
                     lte_pred = a_u <= b_u
-                    abs_pred = a_u >= 0
+                    abs_pred = a_u >= UData(0)
                     shr = Data(a_u >> b_u)
                 res = Data(0)
                 res_p = Bit(0)

@@ -3,7 +3,8 @@ from peak.mapper.utils import rebind_type
 from .common import DATAWIDTH
 from functools import lru_cache
 import magma
-
+from ast_tools.passes import begin_rewrite, end_rewrite, loop_unroll, if_inline
+from ast_tools.macros import inline
 
 @family_closure
 def MUL_t_fc(family):
@@ -34,29 +35,33 @@ def MUL_fc(family):
         SData = SInt[in_width]
         UInt = family.Unsigned
         UData = UInt[in_width]
+        UDataMul = UInt[2*in_width]
         MUL_t, Signed_t = MUL_t_fc(family)
 
         @assemble(family, locals(), globals())
         class MUL(Peak):
+            @end_rewrite()
+            @if_inline()
+            @begin_rewrite()
             @name_outputs(res=Data_out)
             def __call__(self, instr: MUL_t, signed_: Signed_t, a:Data_in, b:Data_in) -> (Data_out):
 
                 if signed_ == Signed_t.signed:
                     a_s = SData(a)
                     b_s = SData(b)
-                    mula, mulb = a_s.sext(in_width), b_s.sext(in_width)
+                    mula, mulb = UDataMul(a_s.sext(in_width)), UDataMul(b_s.sext(in_width))
                 else:
                     a_u = UData(a)
                     b_u = UData(b)
                     mula, mulb = a_u.zext(in_width), b_u.zext(in_width)
                 mul = mula * mulb
 
-                if out_width == in_width:
+                if inline(out_width == in_width):
                     if instr == MUL_t.Mult0:
                         res = mul[:in_width]
                     else:
                         res = mul[in_width:2*in_width]
-                elif out_width == 2*in_width:
+                elif inline(out_width == 2*in_width):
                     res = mul
                 else:
                     res = mul[:out_width]

@@ -31,10 +31,6 @@ def asm_arch_closure(arch):
 
 
     def gen_inst(alu, mul, mux_in0, mux_in1, mux_reg, mux_out, signed=Signed_t.unsigned, lut=0, cond=Cond_t.Z):
-        """
-        https://github.com/StanfordAHA/CGRAGenerator/wiki/PE-Spec
-        Format a configuration of the PE - sets all fields
-        """
 
         args = []
 

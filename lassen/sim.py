@@ -240,17 +240,17 @@ def arch_closure(arch):
                 for out_index in ast_tools.macros.unroll(range(arch.num_outputs)):
                     if inline(len(arch.outputs[out_index]) == 1):
                         output_temp = signals[arch.outputs[out_index][0]]
+                        outputs.append(output_temp)
                     else:
+                        output_temp = signals[arch.outputs[out_index][0]]
                         out_mux_select = inst.mux_out[mux_idx_out]
                         mux_idx_out = mux_idx_out + 1
                         for mux_inputs in ast_tools.macros.unroll(range(len(arch.outputs[out_index]))):
                             if out_mux_select == family.BitVector[m.math.log2_ceil(len(arch.outputs[out_index]))](mux_inputs):
                                 output_temp = signals[arch.outputs[out_index][mux_inputs]]
-                    outputs.append(output_temp)
+                        outputs.append(output_temp)
 
 
-                # for i in ast_tools.macros.unroll(range(arch.num_outputs)):
-                #     outputs.append(signals[arch.outputs[i]])
 
                 if inline(arch.enable_output_regs):
                     outputs_from_reg = []
@@ -263,7 +263,7 @@ def arch_closure(arch):
                 else:
                     return DataOutputList(*outputs), res_p, read_config_data
 
-            print(inspect.getsource(__init__)) 
-            print(inspect.getsource(__call__)) 
+            # print(inspect.getsource(__init__)) 
+            # print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

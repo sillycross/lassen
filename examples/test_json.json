@@ -1,6 +1,6 @@
 {
   "outputs": [
-    "mul_out"
+    "mul_out", "alu_out"
   ],
   "input_width": 16,
   "output_width": 16,

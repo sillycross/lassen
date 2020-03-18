@@ -2,7 +2,7 @@ import fault
 import magma
 import shutil
 from peak.assembler import Assembler
-from peak import wrap_with_disassembler
+from peak import wrap_with_disassembler, Tuple_fc
 from lassen import arch_closure, inst_arch_closure
 from lassen.arch import read_arch
 from lassen.asm import asm_arch_closure
@@ -23,7 +23,11 @@ arch = read_arch(str(sys.argv[1]))
 # import pdb; pdb.set_trace()
 width = arch.input_width
 num_inputs = arch.num_inputs
-num_outputs = arch.num_outputs
+
+
+# TEMPORARY - FIX THIS LATER
+num_outputs = 1
+
 num_alu = arch.num_alu
 Inst_fc = inst_arch_closure(arch)
 Inst = Inst_fc(Bit.get_family())
@@ -70,7 +74,7 @@ def copy_file(src_filename, dst_filename, override=False):
 
 
 # Define instruction here
-num_sim_cycles = 10
+num_sim_cycles = 1
 alu_list = [ALU_t.Add for _ in range(arch.num_alu)]
 mul_list = [MUL_t.Mult0 for _ in range(arch.num_mul)]
 mux_list_in0 = [0 for _ in range(arch.num_mux_in0)]
@@ -80,7 +84,7 @@ mux_list_out = [0 for _ in range(arch.num_output_mux)]
 
 Enables_fc = enables_arch_closure(arch)
 Enables = Enables_fc(magma.get_family())
-RegEnList = Tuple[(Bit for _ in range(arch.num_reg))]
+RegEnList = Tuple_fc(magma.get_family())[(Bit for _ in range(arch.num_reg))]
 
 if arch.num_reg > 0:
     RegEnListDefault_temp = [Bit(1) for _ in range(arch.num_reg)]
@@ -111,7 +115,7 @@ for i in range(len(arch.regs)):
 
 
 mux_out_idx = 0
-for i in range(arch.num_outputs):
+for i in range(num_outputs):
     if len(arch.outputs[i]) > 1:
         mux_list_inst_out.append(BitVector[magma.math.log2_ceil(len(arch.outputs[i]))](mux_list_out[mux_out_idx]))
         mux_out_idx += 1
@@ -120,6 +124,7 @@ for i in range(arch.num_outputs):
 inst_gen = gen_inst(alu_list, mul_list, mux_list_inst_in0, mux_list_inst_in1, mux_list_inst_reg, mux_list_inst_out, Signed_t.unsigned, 0, Cond_t.Z)
 
 inputs = [random.randint(0, 2**7) for _ in range(num_inputs)]
+inputs[0] = 1
 inputs_to_PE = [Data(inputs[i]) for i in range(num_inputs)]
 print(inputs)
 
@@ -210,6 +215,8 @@ def test_func():
     if (arch.enable_output_regs):
         res_pe,_, _ = pe(inst_gen, inputs_to_PE)
     
+    if not isinstance(res_pe, list):
+        res_pe = [res_pe]
     print("functional test result: ", [res_pe[i].value for i in range(num_outputs)])
     assert res_comp == [res_pe[i].value for i in range(num_outputs)] 
 
@@ -241,7 +248,7 @@ def test_rtl():
     for _ in range(num_sim_cycles - 1):
         tester.step(2)
         
-    tester.circuit.O0.expect(res_comp)
+    tester.circuit.O0.expect(*res_comp)
     
         
 

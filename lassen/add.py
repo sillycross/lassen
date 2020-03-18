@@ -31,7 +31,4 @@ def ADD_fc(family):
 
             return res, res_p, Z, N, C, V
 
-    # if family.Bit is magma.Bit:
-    #     return magma.circuit.combinational(ADD)
-
     return ADD

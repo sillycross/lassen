@@ -2,7 +2,7 @@
     "outputs": [
       30
     ],
-    "width": 32,
+    "width": 16,
     "modules": [
       {
         "type": "mul",

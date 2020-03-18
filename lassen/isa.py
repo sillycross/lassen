@@ -3,9 +3,8 @@ from .lut import LUT_t_fc
 from .alu import ALU_t_fc
 from .mul import MUL_t_fc
 from .common import DATAWIDTH
-from peak import Const, Product_fc, family_closure
+from peak import Const, Product_fc, family_closure, Tuple_fc
 import magma as m
-from hwtypes import Tuple
 """
 https://github.com/StanfordAHA/CGRAGenerator/wiki/PE-Spec
 """
@@ -18,26 +17,14 @@ def inst_arch_closure(arch):
         LUT_t, _ = LUT_t_fc(family)
         Cond_t = Cond_t_fc(family)
 
-        # Need this to be magma to use Tuple
-
-        if family.Bit is m.Bit:
-            ALU_t, Signed_t = ALU_t_fc(m.get_family())
-            MUL_t, Signed_t = MUL_t_fc(m.get_family())
-            ALU_t_list_type = m.Tuple[(ALU_t for _ in range(arch.num_alu))]
-            MUL_t_list_type = m.Tuple[(MUL_t for _ in range(arch.num_mul))]
-            mux_list_type_in0 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
-            mux_list_type_in1 = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
-            mux_list_type_reg = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
-            mux_list_type_output = m.Tuple[(family.BitVector[m.math.log2_ceil(len(arch.outputs[i]))] for i in range(arch.num_outputs) if len(arch.outputs[i]) > 1)]
-        else:
-            ALU_t, Signed_t = ALU_t_fc(family)
-            MUL_t, Signed_t = MUL_t_fc(family)
-            ALU_t_list_type = Tuple[(ALU_t for _ in range(arch.num_alu))]
-            MUL_t_list_type = Tuple[(MUL_t for _ in range(arch.num_mul))]
-            mux_list_type_in0 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
-            mux_list_type_in1 = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
-            mux_list_type_reg = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
-            mux_list_type_output = Tuple[(family.BitVector[m.math.log2_ceil(len(arch.outputs[i]))] for i in range(arch.num_outputs) if len(arch.outputs[i]) > 1)]
+        ALU_t, Signed_t = ALU_t_fc(family)
+        MUL_t, Signed_t = MUL_t_fc(family)
+        ALU_t_list_type = Tuple_fc(family)[(ALU_t for _ in range(arch.num_alu))]
+        MUL_t_list_type = Tuple_fc(family)[(MUL_t for _ in range(arch.num_mul))]
+        mux_list_type_in0 = Tuple_fc(family)[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in0))] for i in range(len(arch.modules)) if len(arch.modules[i].in0) > 1)]
+        mux_list_type_in1 = Tuple_fc(family)[(family.BitVector[m.math.log2_ceil(len(arch.modules[i].in1))] for i in range(len(arch.modules)) if len(arch.modules[i].in1) > 1)]
+        mux_list_type_reg = Tuple_fc(family)[(family.BitVector[m.math.log2_ceil(len(arch.regs[i].in_))] for i in range(len(arch.regs)) if len(arch.regs[i].in_) > 1)]
+        mux_list_type_output = Tuple_fc(family)[(family.BitVector[m.math.log2_ceil(len(arch.outputs[i]))] for i in range(arch.num_outputs) if len(arch.outputs[i]) > 1)]
 
 
         class Inst(Product_fc(family)):

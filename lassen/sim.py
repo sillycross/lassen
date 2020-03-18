@@ -1,7 +1,6 @@
-from peak import Peak, family_closure, name_outputs, assemble, gen_register
+from peak import Peak, family_closure, name_outputs, assemble, gen_register, Tuple_fc
 from functools import lru_cache
 import magma as m
-import hwtypes
 import ast_tools
 from ast_tools.passes import begin_rewrite, end_rewrite, loop_unroll, if_inline
 from ast_tools.macros import inline
@@ -48,16 +47,11 @@ def arch_closure(arch):
         Enables_fc = enables_arch_closure(arch)
         Enables = Enables_fc(family)
 
-        if family.Bit is m.Bit:
-            DataInputList = m.Tuple[(Data for _ in range(arch.num_inputs))]
-            DataOutputList = m.Tuple[(Out_Data for _ in range(arch.num_outputs))]
-            ConfigDataList = m.Tuple[(Data for _ in range(arch.num_const_reg))]
-            RegEnList = m.Tuple[(Bit for _ in range(arch.num_reg))]
-        else:
-            DataInputList = hwtypes.Tuple[(Data for _ in range(arch.num_inputs))]
-            DataOutputList = hwtypes.Tuple[(Out_Data for _ in range(arch.num_outputs))]
-            ConfigDataList = hwtypes.Tuple[(Data for _ in range(arch.num_const_reg))]
-            RegEnList = hwtypes.Tuple[(Bit for _ in range(arch.num_reg))]
+
+        DataInputList = Tuple_fc(family)[(Data for _ in range(arch.num_inputs))]
+        DataOutputList = ["PE_res=Out_Data" for _ in range(arch.num_outputs)]
+        ConfigDataList = Tuple_fc(family)[(Data for _ in range(arch.num_const_reg))]
+        RegEnList = Tuple_fc(family)[(Bit for _ in range(arch.num_reg))]
 
         if arch.num_reg > 0:
             RegEnListDefault_temp = [Bit(1) for _ in range(arch.num_reg)]
@@ -118,14 +112,14 @@ def arch_closure(arch):
             @loop_unroll()
             @loop_unroll()
             @begin_rewrite()
-            @name_outputs(PE_res=DataOutputList, res_p=UBit, read_config_data=UData32)
+            @name_outputs(PE_res=Out_Data, res_p=UBit, read_config_data=UData32)
             def __call__(self, inst: Inst, \
                 inputs : DataInputList, \
                 enables : Enables = RegEnListDefault, \
                 config_addr : Data8 = Data8(0), \
                 config_data : Config = Config_default, \
                 config_en : Bit = Bit(0) \
-            ) -> (DataOutputList, Bit, Data32):
+            ) -> (Out_Data, Bit, Data32):
                 # Simulate one clock cycle
 
 
@@ -232,8 +226,12 @@ def arch_closure(arch):
                 lut_res = self.lut(inst.lut, rd, re, rf)
 
                 # calculate 1-bit result
+                alu_res_p = Bit(0) 
+                Z = Bit(0) 
+                N = Bit(0) 
+                C = Bit(0) 
+                V = Bit(0) 
                 res_p = self.cond(inst.cond, alu_res_p, lut_res, Z, N, C, V)
-
                 
                 outputs = []
                 mux_idx_out = 0
@@ -261,7 +259,8 @@ def arch_closure(arch):
                     # return 16-bit result, 1-bit result
                     return DataOutputList(*outputs_from_reg), res_p, read_config_data
                 else:
-                    return DataOutputList(*outputs), res_p, read_config_data
+                    return Out_Data(outputs[0]), res_p, read_config_data
+                    # return DataOutputList(*outputs), res_p, read_config_data
 
             # print(inspect.getsource(__init__)) 
             # print(inspect.getsource(__call__)) 

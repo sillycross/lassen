@@ -86,7 +86,7 @@ def read_arch(json_file_str):
                     ids.append(new_reg.id)
 
                 regs.append(new_reg)
-            elif module_json['type'] == "const_reg":
+            elif module_json['type'] == "const":
                 num_const_reg += 1
                 new_const_reg = const_reg(module_json['id'], module_json.get('width', width))
                 const_regs.append(new_const_reg)
@@ -124,11 +124,11 @@ def read_arch(json_file_str):
 
                 modules.append(new_module)
 
-        unique_inputs = list(set(inputs) - set(ids))
+        unique_inputs = [entry for entry in inputs if entry not in ids]
         num_inputs = len(unique_inputs)
         num_outputs = len(json_in['outputs'])
 
-        #print(unique_inputs)
+        print(unique_inputs)
 
         for module_ in modules:
             if not isinstance(module_.in0, list):

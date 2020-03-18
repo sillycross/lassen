@@ -5,6 +5,8 @@ from functools import lru_cache
 import magma
 from ast_tools.passes import begin_rewrite, end_rewrite, loop_unroll, if_inline
 from ast_tools.macros import inline
+import inspect
+
 
 @family_closure
 def MUL_t_fc(family):
@@ -53,8 +55,9 @@ def MUL_fc(family):
                 else:
                     a_u = UData(a)
                     b_u = UData(b)
-                    mula, mulb = a_u.zext(in_width), b_u.zext(in_width)
+                    mula, mulb = UDataMul(a_u.zext(in_width)), UDataMul(b_u.zext(in_width))
                 mul = mula * mulb
+                res=0
 
                 if inline(out_width == in_width):
                     if instr == MUL_t.Mult0:
@@ -68,5 +71,6 @@ def MUL_fc(family):
                     
                 return res
 
+            # print(inspect.getsource(__call__)) 
         return MUL
     return MUL_bw

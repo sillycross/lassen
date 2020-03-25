@@ -1,11 +1,17 @@
-from peak import Peak, family_closure, name_outputs, assemble,  Enum_fc
-
+from peak import Peak, family_closure, name_outputs, assemble
+from hwtypes import Enum as Enum_hw
+from magma import Enum as Enum_m
+import magma
 """
 Condition code field - selects which 1-bit result is retuned
 """
 @family_closure
 def Cond_t_fc(family):
-    Enum = Enum_fc(family)
+    if (family == magma.get_family()):
+        Enum = Enum_m
+    else:
+        Enum = Enum_hw
+
     class Cond_t(Enum):
         Z = 0    # EQ
         Z_n = 1  # NE

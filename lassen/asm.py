@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from .isa import inst_arch_closure
-from hwtypes import BitVector, Bit, Tuple
+from hwtypes import BitVector, Bit
 import magma as m
 from .common import DATAWIDTH
 

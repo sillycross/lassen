@@ -230,14 +230,20 @@ def graph_arch(arch: Arch):
         else:
             pe_subgraph.edge(str(reg.in_[0]), str(reg.id))
 
+
+    for reg in arch.const_regs:
+        pe_subgraph.attr('node', shape='box')
+        pe_subgraph.node(str(reg.id), "const")
+
     graph.subgraph(pe_subgraph)
 
     mux_out_idx = 0
     outputs_subgraph.attr(rank='max')
     outputs_subgraph.attr('node', shape='circle')
     for i, output in enumerate(arch.outputs):
-        outputs_subgraph.node("out_" + str(i), str(i))
-
+        
+        outputs_subgraph.node("out_" + str(i), "out" + str(i))
+        outputs_subgraph.attr('node', shape='circle')
         if len(output) > 1:
             graph.attr('node', shape='invtrapezium')
             graph.node("mux_out_" + str(mux_out_idx), "mux_out_" + str(mux_out_idx))

@@ -1,5 +1,6 @@
 from .common import DATAWIDTH
-from peak import Const, Product_fc, family_closure, Tuple_fc
+from peak import Const, family_closure
+from hwtypes import Tuple, Product
 import magma as m
 
 def enables_arch_closure(arch):
@@ -8,10 +9,10 @@ def enables_arch_closure(arch):
         Data = family.BitVector[DATAWIDTH]
         Bit = family.Bit
 
-        enablesList = Tuple_fc(family)[(Bit for _ in range(arch.num_reg))]
+        enablesList = Tuple[(Bit for _ in range(arch.num_reg))]
 
 
-        class Enables(Product_fc(family)):
+        class Enables(Product):
 
             clk_en = Bit
 

@@ -11,24 +11,26 @@ def overflow(a, b, res):
 
 @family_closure
 def ADD_fc(family):
+    def ADD_bw(width):
 
-    Data = family.BitVector[DATAWIDTH]
-    Bit = family.Bit
-    UInt = family.Unsigned
-    UData = UInt[DATAWIDTH]
+        Data = family.BitVector[width]
+        Bit = family.Bit
+        UInt = family.Unsigned
+        UData = UInt[width]
 
-    @assemble(family, locals(), globals())
-    class ADD(Peak):
-        @name_outputs(res=Data, res_p=Bit, Z=Bit, N=Bit, C=Bit, V=Bit)
-        def __call__(self, a: Data, b: Data) -> (Data, Bit, Bit, Bit, Bit, Bit):
+        @assemble(family, locals(), globals())
+        class ADD(Peak):
+            @name_outputs(res=Data, res_p=Bit, Z=Bit, N=Bit, C=Bit, V=Bit)
+            def __call__(self, a: Data, b: Data) -> (Data, Bit, Bit, Bit, Bit, Bit):
 
 
-            res, C = UData(a).adc(UData(b), Bit(0))
-            V = overflow(a, b, res)
-            res_p = C
-            N = Bit(res[-1])
-            Z = (res == 0)
+                res, C = UData(a).adc(UData(b), Bit(0))
+                V = overflow(a, b, res)
+                res_p = C
+                N = Bit(res[-1])
+                Z = (res == 0)
 
-            return res, res_p, Z, N, C, V
+                return res, res_p, Z, N, C, V
 
-    return ADD
+        return ADD
+    return ADD_bw

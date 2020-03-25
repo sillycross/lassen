@@ -4,6 +4,7 @@ import sys
 from peak import Peak, family_closure, assemble
 from peak.mapper import ArchMapper
 from peak.mapper.utils import pretty_print_binding
+import time
 
 @family_closure
 def Add_fc(family):
@@ -20,10 +21,16 @@ def test_add():
     PE_fc = arch_closure(arch)
 
     ir_fc = Add_fc
+
+    tic = time.perf_counter()
+
     arch_mapper = ArchMapper(PE_fc)
     ir_mapper = arch_mapper.process_ir_instruction(ir_fc)
     solution = ir_mapper.solve('cvc4')
     pretty_print_binding(solution.ibinding)
     assert solution.solved
+
+    toc = time.perf_counter()
+    print(f"{toc - tic:0.4f} seconds")
 
 test_add()

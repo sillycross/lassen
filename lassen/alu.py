@@ -1,11 +1,18 @@
-from peak import Peak, name_outputs, family_closure, assemble, Enum_fc
+from peak import Peak, name_outputs, family_closure, assemble
+from hwtypes import Enum as Enum_hw
+from magma import Enum as Enum_m
+import magma
 from peak.mapper.utils import rebind_type
 from .common import DATAWIDTH
 import magma
 
+
 @family_closure
 def ALU_t_fc(family):
-    Enum = Enum_fc(family)
+    if (family == magma.get_family()):
+        Enum = Enum_m
+    else:
+        Enum = Enum_hw
     class ALU_t(Enum):
         Add = 0
         Sub = 1
@@ -25,6 +32,7 @@ def ALU_t_fc(family):
     class Signed_t(Enum):
         unsigned = 0
         signed = 1
+        signed = 2
 
     return ALU_t, Signed_t
 
@@ -37,17 +45,14 @@ def overflow(a, b, res):
 @family_closure
 def ALU_fc(family):
     def ALU_bw(width):
-        BitVector = family.BitVector
+
         Data = family.BitVector[width]
         Bit = family.Bit
         SInt = family.Signed
         SData = SInt[width]
         UInt = family.Unsigned
         UData = UInt[width]
-        UData32 = UInt[32]
-
         ALU_t, Signed_t = ALU_t_fc(family)
-
 
         @assemble(family, locals(), globals())
         class ALU(Peak):
@@ -77,10 +82,15 @@ def ALU_fc(family):
                 Cin = Bit(0)
                 if (alu == ALU_t.Sub) | (alu == ALU_t.Sbc):
                     b = ~b
-                if (alu == ALU_t.Sub):
+
+                if (alu == ALU_t.Add):
+                    Cin = Bit(0)  
+                    # Cin = d
+                elif (alu == ALU_t.Sub):
                     Cin = Bit(1)
                 elif (alu == ALU_t.Adc) | (alu == ALU_t.Sbc):
                     Cin = d
+                    # Cin = Bit(0)
 
                 C = Bit(0)
                 V = Bit(0)

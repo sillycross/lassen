@@ -1,4 +1,5 @@
-from peak import Peak, family_closure, name_outputs, assemble, gen_register, Tuple_fc
+from peak import Peak, family_closure, name_outputs, assemble, gen_register
+from hwtypes import Tuple
 from functools import lru_cache
 import magma as m
 import ast_tools
@@ -36,8 +37,7 @@ def arch_closure(arch):
         Register = gen_register(Data, 0)(family)
         BitReg = gen_register_mode(Bit, 0)(family)
         ALU_bw = ALU_fc(family)
-        ADD = ADD_fc(family)
-        Cond = Cond_fc(family)
+        ADD_bw = ADD_fc(family)
         LUT = LUT_fc(family)
         MUL_bw = MUL_fc(family)
         Inst_fc = inst_arch_closure(arch)
@@ -46,12 +46,13 @@ def arch_closure(arch):
         Config = Config_fc(family)
         Enables_fc = enables_arch_closure(arch)
         Enables = Enables_fc(family)
+        Cond = Cond_fc(family)
 
 
-        DataInputList = Tuple_fc(family)[(Data for _ in range(arch.num_inputs))]
-        DataOutputList = ["PE_res=Out_Data" for _ in range(arch.num_outputs)]
-        ConfigDataList = Tuple_fc(family)[(Data for _ in range(arch.num_const_reg))]
-        RegEnList = Tuple_fc(family)[(Bit for _ in range(arch.num_reg))]
+        DataInputList = Tuple[(Data for _ in range(arch.num_inputs))]
+        DataOutputList = Tuple[(Out_Data for _ in range(arch.num_outputs))]
+        ConfigDataList = Tuple[(Data for _ in range(arch.num_const_reg))]
+        RegEnList = Tuple[(Bit for _ in range(arch.num_reg))]
 
         if arch.num_reg > 0:
             RegEnListDefault_temp = [Bit(1) for _ in range(arch.num_reg)]
@@ -95,7 +96,7 @@ def arch_closure(arch):
                     if inline(arch.modules[symbol_interpolate].type_ == 'mul'):
                         self.modules_symbol_interpolate: type(MUL_bw(arch.modules[symbol_interpolate].in_width, arch.modules[symbol_interpolate].out_width)) = MUL_bw(arch.modules[symbol_interpolate].in_width, arch.modules[symbol_interpolate].out_width)()
                     if inline(arch.modules[symbol_interpolate].type_ == 'add'):
-                        self.modules_symbol_interpolate: ADD = ADD()
+                        self.modules_symbol_interpolate: type(ALU_bw(arch.input_width)) = ADD_bw(arch.input_width)()
                 # Bit Registers
                 self.regd: BitReg = BitReg()
                 self.rege: BitReg = BitReg()
@@ -226,12 +227,13 @@ def arch_closure(arch):
                 lut_res = self.lut(inst.lut, rd, re, rf)
 
                 # calculate 1-bit result
-                alu_res_p = Bit(0) 
-                Z = Bit(0) 
-                N = Bit(0) 
-                C = Bit(0) 
-                V = Bit(0) 
+                # alu_res_p = Bit(0) 
+                # Z = Bit(0) 
+                # N = Bit(0) 
+                # C = Bit(0) 
+                # V = Bit(0) 
                 res_p = self.cond(inst.cond, alu_res_p, lut_res, Z, N, C, V)
+                # res_p = Bit(0)
                 
                 outputs = []
                 mux_idx_out = 0
@@ -240,7 +242,7 @@ def arch_closure(arch):
                         output_temp = signals[arch.outputs[out_index][0]]
                         outputs.append(output_temp)
                     else:
-                        output_temp = signals[arch.outputs[out_index][0]]
+                        # output_temp = signals[arch.outputs[out_index][0]]
                         out_mux_select = inst.mux_out[mux_idx_out]
                         mux_idx_out = mux_idx_out + 1
                         for mux_inputs in ast_tools.macros.unroll(range(len(arch.outputs[out_index]))):
@@ -257,12 +259,12 @@ def arch_closure(arch):
                         outputs_from_reg.append(temp)
 
                     # return 16-bit result, 1-bit result
-                    return DataOutputList(*outputs_from_reg), res_p, read_config_data
+                    # return DataOutputList(*outputs_from_reg), res_p, read_config_data
                 else:
-                    return Out_Data(outputs[0]), res_p, read_config_data
+                    return outputs[0], res_p, read_config_data
                     # return DataOutputList(*outputs), res_p, read_config_data
 
             # print(inspect.getsource(__init__)) 
-            # print(inspect.getsource(__call__)) 
+            print(inspect.getsource(__call__)) 
         return PE
     return PE_fc

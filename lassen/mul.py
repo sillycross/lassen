@@ -1,20 +1,28 @@
-from peak import Peak, name_outputs, family_closure, assemble, Enum_fc
+from peak import Peak, name_outputs, family_closure, assemble
 from peak.mapper.utils import rebind_type
 from .common import DATAWIDTH
 from functools import lru_cache
+from hwtypes import Enum
 import magma
 from ast_tools.passes import begin_rewrite, end_rewrite, loop_unroll, if_inline
 from ast_tools.macros import inline
 import inspect
-
+from hwtypes import Enum as Enum_hw
+from magma import Enum as Enum_m
+import magma
 
 @family_closure
 def MUL_t_fc(family):
-    Enum = Enum_fc(family)
-    class MUL_t(Enum):
 
+    if (family == magma.get_family()):
+        Enum = Enum_m
+    else:
+        Enum = Enum_hw
+
+    class MUL_t(Enum):
         Mult0 = 0x0
         Mult1 = 0x1
+        Mult1 = 0x2
 
 
     """
@@ -23,6 +31,7 @@ def MUL_t_fc(family):
     class Signed_t(Enum):
         unsigned = 0
         signed = 1
+        signed = 2
 
     return MUL_t, Signed_t
 
@@ -48,7 +57,7 @@ def MUL_fc(family):
             @name_outputs(res=Data_out)
             def __call__(self, instr: MUL_t, signed_: Signed_t, a:Data_in, b:Data_in) -> (Data_out):
 
-                if signed_ == Signed_t.signed:
+                if Bit(signed_ == Signed_t.signed):
                     a_s = SData(a)
                     b_s = SData(b)
                     mula, mulb = UDataMul(a_s.sext(in_width)), UDataMul(b_s.sext(in_width))

@@ -48,7 +48,11 @@ def test_wrapped_PE():
     __circuit = peak.wrap_with_disassembler(
         circuit, __asm.disassemble, __asm.width,
         HashableDict(__asm.layout),
-        instr_magma_type)
+        instr_magma_type, wrapped_name = "WrappedPE")
     assert __circuit is not None
+    cname = __circuit.coreir_name
+    backend = magma.frontend.coreir_.GetCoreIRBackend()
+    backend.compile(__circuit)
+
 
 
